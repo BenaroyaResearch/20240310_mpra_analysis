@@ -1,0 +1,16 @@
+---
+title: "MPRA merge creation"
+output: html_document
+author: Max Dippel
+date: "2024-03-11"
+---
+
+This is the document I will use to create the mpra merge files for all of the cell types for the March 10th mpra pipeline run.
+There will be a place for importing the mpra in which will have to change every time. 
+
+
+Import MPRA and set directories
+```{r}
+
+```
+
