@@ -8,9 +8,685 @@ date: "2024-03-11"
 This is the document I will use to create the mpra merge files for all of the cell types for the March 10th mpra pipeline run.
 There will be a place for importing the mpra in which will have to change every time. 
 
+MPRA files ran through this pipeline:
+OLJR.C_Tcell_emVAR_glm_20240310.out
+OLJR.C_Tcell_emVAR_ttest_20240310.out
+OLJR.A_Jurkat_emVAR_glm_20240310.out
+OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
 
-Import MPRA and set directories
+MPRA files which need to be ran through this pipeline:
+OLJR.B_GM12878_emVAR_glm_20240310.out
+
+Hash and unhash the lines at 478 and 548 to prevent writing tables you do not want
+
+Import MPRA, inspect data, and set directories
+```{r, eval=FALSE}
+# Load the .out file I get from Jax which is just the MPRA data
+mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+# How many rows are in that file?
+nrow(mpra_out)
+# How many columns are in that file?
+ncol(mpra_out)
+# What are the column names in the mpra?
+names(mpra_out)
+# Directory to put the mpra in (with cell type and glm or ttest and no slash at the end)
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+# Name of MPRA file (end with hg19 for this Rmd)
+mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
+# This decides what option to choose for the variant category filter. There are currently two options "mouri" and "tcell
+filter <- "tcell"
+```
+
+This code will make columns the same name as the analysis I'm about to run so things are not annoying.
+```{r, eval=FALSE}
+# Change the name of the columns to match the functions
+mpra_out$LogSkew <- mpra_out$Log2Skew
+# Change the name of the column to match the functions
+mpra_out$A.Ctrl.Mean <- mpra_out$A_Ctrl_Mean
+mpra_out$A.Exp.Mean <- mpra_out$A_Exp_Mean
+mpra_out$A.log2FC <- mpra_out$A_log2FC
+mpra_out$A.log2FC_SE <- mpra_out$A_log2FC_SE
+mpra_out$A.logP <- mpra_out$A_logP
+mpra_out$A.logPadj_BH <- mpra_out$A_logPadj_BH
+mpra_out$A.logPadj_BF <- mpra_out$A_logPadj_BF
+
+mpra_out$B.Ctrl.Mean <- mpra_out$B_Ctrl_Mean
+mpra_out$B.Exp.Mean <- mpra_out$B_Exp_Mean
+mpra_out$B.log2FC <- mpra_out$B_log2FC
+mpra_out$B.log2FC_SE <- mpra_out$B_log2FC_SE
+mpra_out$B.logP <- mpra_out$B_logP
+mpra_out$B.logPadj_BH <- mpra_out$B_logPadj_BH
+mpra_out$B.logPadj_BF <- mpra_out$B_logPadj_BF
+mpra_out$Skew.logP <- mpra_out$Skew_logP
+mpra_out$Skew.logFDR <- mpra_out$Skew_logFDR
+# This column creates the project column
+mpra_out$project <- "TGWAS"
+# This is a new column I am adding for this analysis
+mpra_out$Skew.logFDR_act <- mpra_out$Skew_logFDR_act
+# adding this also. I used to do it higher in the analysis.
+# The  linkage analysis will not run without this. Is this okay?
+mpra_out$ld_snp<-mpra_out$SNP
+# eliminate all of the columns that have the names we don't want
+mpra <- subset(mpra_out, select = -c(Log2Skew,A_Ctrl_Mean,A_Exp_Mean,A_log2FC,A_log2FC_SE,A_logP,A_logPadj_BH, A_logPadj_BF,B_Ctrl_Mean,B_Exp_Mean,B_log2FC,B_log2FC_SE,B_logP,B_logPadj_BH,B_logPadj_BF,Skew_logP,Skew_logFDR,Skew_logFDR_act))
+```
+
+# MPRA merge
+
+Load the packages
+```{r packages, eval=FALSE, message=FALSE}
+library(stringr)
+library(IRanges)
+library(SummarizedExperiment)
+library(data.table)
+library(readxl)
+library(biomaRt)
+```
+
 ```{r}
+nrow(mpra)
+```
 
+
+```{r ld data, eval=FALSE}
+#Merge LD files across chromosomes
+# Create an empty data frame
+dat.ld.all<-data.frame(lead_snp=character(), ld_snp=character(), r2=numeric(), stringsAsFactors = F)
+# A loop that says "for every chromosome..."
+for(c in c(1:22, "X")){
+  # read in Mike's linkage files for each chromosome
+  dat.ld.chr<-read.delim(paste("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/annotate_mpra/ld/ld/mpra.chr", c, ".ld", sep=""), header=T, stringsAsFactors = F, sep="")
+  # Select the columns you need from this data set
+  dat.ld.chr<-subset(dat.ld.chr, select=c(SNP_A, SNP_B, R2))
+  # Rename those columns 
+  names(dat.ld.chr)<-c("lead_snp","ld_snp", "r2")
+  # combine these values with the empty data frame you created earlier
+  dat.ld.all<-rbind(dat.ld.all, dat.ld.chr)
+  # Remove dat.ld.chr
+  rm(dat.ld.chr)
+}
+
+#remove duplicates. If proxy SNP has multiple entries, select the one with the highest r2
+dat.ld.all<-dat.ld.all[order(dat.ld.all$ld_snp, -dat.ld.all$r2),]
+dat.ld.all<-dat.ld.all[!duplicated(dat.ld.all$ld_snp),]
+
+#Merge in LD information
+mpra<-merge(mpra, dat.ld.all,  by="ld_snp", all.x=T, all.y=F)
+
+```
+
+```{r}
+nrow(mpra)
+```
+
+This big loop to integrate the PICS (probabilistics identification of causal snps) data into the mpra.merge data set 
+```{r PICS data, eval=FALSE}
+# Order of GWAS for plotting
+gwas.order<- c("Crohns","MS","Psoriasis", "RA","T1D","UC", "IBD") 
+# Merge in GWAS and PICS fine-mapping data
+for(d in gwas.order){
+  # Read in PICS results
+  gwas<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/pics/run/", d, ".ld_0.8.pics"), header=F, stringsAsFactors = F, sep="\t")
+  # Select certain columns in the gwas data
+  gwas<-gwas[,c(1,2,4,6,7)]
+  # Name the columns of the gwas data
+  names(gwas)<-c("lead_snp", "ld_snp", "r2", "pics","pval")
+  # eliminate the letters "chr" from lead and lp snp
+  gwas$lead_snp<-gsub("chr", "", gwas$lead_snp)
+  gwas$ld_snp<-gsub("chr", "", gwas$ld_snp)
+  
+  #Merge PICS results with MPRA to subset for SNPs tested in the MPRA
+  gwas<-merge(gwas, mpra[,c("ld_snp", "lead_snp")], by=c("ld_snp", "lead_snp"), all.x=F, all.y=F)
+
+  #Remove SNPs seen multiple times, picking the SNP with the most significant p-value in catalog, then the highest PICS posterior probability
+  gwas<-gwas[order(-gwas$pval, -gwas$r2),]
+  gwas<-gwas[!duplicated(gwas[,c("ld_snp", "lead_snp")]),]
+  
+# Generate credible sets
+  # Order the data by SNPs
+  gwas <- gwas[order(gwas$lead_snp, -gwas$pics),]
+  gwas$PP_running<-0 #Create variable with a running sum of PICS probabilities
+  gwas$PP_sum <- 0 #Create variable with sum of PICS probablities
+  #Note: need this second variable to help break ties (if two SNPs have the same PP, the automatically will have the same credible set annotation)
+
+  prev_var <- "dummy_variable" #Create variable to test whether we've moved onto a new locus
+  for(i in c(1:nrow(gwas))){
+    # Creating a new variable from lead snp
+    new_var<-gwas[i,]$lead_snp
+    # if the pics value is greater than zero
+    if(gwas[i,]$pics>0){
+      if(new_var==prev_var){ #Test if next variant is still in same locus
+        gwas[i,]$PP_sum<-gwas[i-1,]$PP_sum+gwas[i,]$pics #Add pics to running PP sum
+        
+        if(gwas[i,]$pics==gwas[i-1,]$pics){ #If two variants have the same PP, force them to have the same PP_running
+          gwas[i,]$PP_running<-gwas[i-1,]$PP_running
+        }else{
+          gwas[i,]$PP_running<-gwas[i,]$pics+gwas[i-1,]$PP_sum #If not Add pics and PP_sum to running PP sum
+        } 
+      }else{ #If this variant is in a new locus, assign the PICS PP as their PP_sum and PP_running
+        gwas[i,]$PP_sum<-gwas[i,]$pics 
+        gwas[i,]$PP_running<-gwas[i,]$pics
+      }
+    }
+    prev_var<-new_var #If lead SNP is different, we've now moved on to new locus
+  }
+  
+# Merge with MPRA data
+  # subseet the gwax data to a few variants
+  gwas<-subset(gwas, select=c(ld_snp, pval,pics,PP_running))
+  # Round the gwas pvalue to two digits
+  gwas$pval<-round(gwas$pval,2)
+  # Creating a disease specific name with underscores for the pics statistics
+  names(gwas)[2:4]<-paste0(d, "_", names(gwas)[2:4])
+  # merge he gwas data and mpra by ld_snp
+  mpra<-merge(mpra, gwas, by="ld_snp", all.x=T, all.y=F)
+  # remove the gwas object
+  rm(gwas)
+}
+```
+
+```{r}
+nrow(mpra)
+```
+
+Creating bed-file like columns
+```{r}
+# Make the MPRA file into a bed-like file for downstream annotations
+# Creating the start snp column by modifying the SNP column. Start snp is calculated by getting the postion then subtracting 1. Then subtracting the absolute value of the difference between the number of reference and alternate alleles.
+mpra$snp_start<-as.numeric(str_split_fixed(mpra$SNP, "\\:", 4)[,2])-1-abs(nchar(str_split_fixed(mpra$SNP, "\\:", 4)[,3])-nchar(str_split_fixed(mpra$SNP, "\\:", 4)[,4]))
+# Create a end_snp column which modifies the SNP column and the values after the first colon and before the second colon
+mpra$snp_end<-as.numeric(str_split_fixed(mpra$SNP, "\\:", 4)[,2])
+# Create a chromosome column by modifying the SNP column. Taking everything before the first colon and adding it to the letter "chr"
+mpra$chr<-paste0("chr", str_split_fixed(mpra$SNP, "\\:", 4)[,1])
+# Create a strand column
+mpra$strand<-"+"
+```
+
+```{r}
+nrow(mpra)
+```
+
+DHS (DNase 1 hypersensitive sites) data 
+```{r}
+### DHS data
+# Eliminating all the columns that have "dhs_" in them which happen to be none of the columns
+mpra<-mpra[,!(grepl("dhs_", names(mpra)))]
+# Make a granges object from the mpra spreadsheet
+mpra.se<-makeGRangesFromDataFrame(mpra,  seqnames = "chr", start.field = "snp_start", end.field = "snp_end",keep.extra.columns=TRUE)
+
+# Read in DHS position file
+dhs.pos<- read.delim(gzfile("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_hg19_WM20190703.txt.gz"), header=T, stringsAsFactors = F)
+# Only keep the first three columns of the DHS pos data
+dhs.pos<-dhs.pos[,c(1:3)]
+# Make peak column which puts together the chromosome, the start and the end
+dhs.pos$peak<-paste0(dhs.pos$seqname, ":", dhs.pos$start, "_", dhs.pos$end)
+# make a granges from the dhs pos data
+dhs.pos.se<-makeGRangesFromDataFrame(dhs.pos, seqnames = "seqname", start.field = "start", end.field = "end",keep.extra.columns=TRUE)
+
+#Find DHS peaks that overlap with MPRA
+overlap_peaks<-data.frame(subsetByOverlaps(dhs.pos.se, mpra.se, type="any"), stringsAsFactors = F)$peak
+overlap_index<-which(dhs.pos$peak%in%overlap_peaks)
+
+# bring in dhs data
+dhs.dat<-fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/dat_bin_FDR01_hg19.txt.gz")
+#Subset for only DHS peaks that overlap with MPRA in the dhs data
+dhs.dat<-dhs.dat[overlap_index,]
+#Subset for only DHS peaks that overlap with MPRA in the dhs pos data
+dhs.pos<-dhs.pos[overlap_index,]
+# Now combin ehte dhs and dhs pos data
+dhs.dat<-cbind(dhs.pos[,c(1:3)],dhs.dat)
+
+#Read in sample information
+sample.dat<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_metadata.tsv", sep="\t", header=T, stringsAsFactors = F)
+# Select certain columns in the sample data
+sample.dat<-subset(sample.dat, !is.na(library.order),select=c(library.order,Biosample.name, System,Subsystem,  Organ, Biosample.type, Biological.state))
+
+#Add peak index into MPRA for faster calculation
+# Create three empty columns in mpra
+mpra$peak_index1<-NA
+mpra$peak_index2<-NA
+mpra$peak_index3<-NA
+# Create a row number column for the dhs data sets
+dhs.pos$index<-seq(1:nrow(dhs.pos))
+dhs.dat$index<-seq(1:nrow(dhs.dat))
+
+# These hashed out portions are hashed out in the original code. I am going to leave them there.
+# For every row in mpra, create a subseted dhs pos dataset with the same chromosome and which emcompases the position of the SNP in that row and extract the index number from that. Then put the indices into the empty mpra columns. You need the three columns for varaints with multiple indicies
+#num_index<-vector()
+for(i in 1:nrow(mpra)){
+  #mpra[i,]$peak_index<-subset(dhs.pos, seqname==mpra[i,]$chr & start<=mpra[i,]$snp_end & end >=mpra[i,]$snp_end)$index[1]  
+  indices<-subset(dhs.pos, seqname==mpra[i,]$chr & start<=mpra[i,]$snp_end & end >=mpra[i,]$snp_end)$index
+  mpra[i,c("peak_index1","peak_index2","peak_index3")]<-c(indices, rep(NA, 3-length(indices)))
+  #num_index<-c(num_index,length(subset(dhs.pos, seqname==mpra[i,]$chr & start<=mpra[i,]$snp_end & end >=mpra[i,]$snp_end)$index))
+}
+
+# list out the cells which are relevant to this cell type (tcell related). This is different than the bcell list which is used with the GM12878 data. The large list of cell types can be found in sample.dat in the Biosample.name column. 
+cells<-c( "hTH1", "hTH17", "hTH2","CD4", "CD4pos_N", "hTR", "Jurkat", "CD8")
+
+# Second loop
+# For each cell type,
+for(c in cells){
+  # get the numbers of the cell types in the sample data
+  cell_col<-as.vector((subset(sample.dat, Biosample.name==c)$library.order)+3)
+  # If the length of these columns are greater than 1, then use the max dhs values from the dhs data 
+  if(length(cell_col)>1){
+    dhs.dat$max_dhs<-apply(dhs.dat[,cell_col], 1, max)
+  }else{
+  # Or just make the only cell type columns's dhs data the max dhs
+    dhs.dat$max_dhs<-dhs.dat[,cell_col]
+  }
+  # Create a peak index of all the values that are greater than 0 
+  peak_index<-subset(dhs.dat, max_dhs>0)$index
+
+ # mpra$dhs_peak<-ifelse(mpra$peak_index%in%peak_index, 1, 0)
+  # Make a column in the mpra that that contains a 1 if that that variant has a peak and a 0 if it does not
+  mpra$dhs_peak<-ifelse(mpra$peak_index1%in%peak_index | mpra$peak_index2%in%peak_index| mpra$peak_index3%in%peak_index, 1, 0)
+  # Make the name of that column specific to the specific cell type tested
+  names(mpra)<-gsub("dhs_peak", paste0("dhs_", c), names(mpra))
+
+}
+# Create a column of dhs peaks that merges all of the DHS columns 
+mpra$dhs_Tcell_merged<-apply(mpra[,which(grepl("dhs_",names(mpra)))],1, max)
+# Create a column of dhs peaks from the original dhs pos column. How is this different from the column we just made?
+mpra$dhs_all<-ifelse(mpra$peak_index1%in%dhs.pos$index | mpra$peak_index2%in%dhs.pos$index | mpra$peak_index3%in%dhs.pos$index, 1, 0)
+# eliminate the peak columns
+mpra<-subset(mpra, select=-c( peak_index1, peak_index2, peak_index3))
+# Remove the objects you do not need anymore 
+rm(mpra.se)
+rm(dhs.pos.se)
+```
+
+```{r}
+nrow(mpra)
+```
+
+deltaSVM
+```{r, eval=FALSE}
+#Merge in deltaSVM
+# Load the Jurkat deltaSVM data
+dat.deltasvm<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_Jurkat_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+# Label the names of the Jurkat deltaSVM data
+names(dat.deltasvm)<-c("SNP", "delta_svm_Jurkat")
+# merge the jurkat deltaSVM data with mpra
+mpra<-merge(mpra, dat.deltasvm, by="SNP", all.x=T, all.y=F)
+# Load the CD4 deltaSVM data
+dat.deltasvm<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_naive_CD4_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+# Rename the columns
+names(dat.deltasvm)<-c("SNP", "delta_svm_nCD4")
+# merge with MPRA
+mpra<-merge(mpra, dat.deltasvm, by="SNP", all.x=T, all.y=F)
+```
+
+```{r}
+nrow(mpra)
+```
+
+ASC 
+```{r, eval=FALSE}
+#Merge in ASC from Calderon
+#Read in allelic skew data from Calderon et al. (PMID: 31570894), Supplementary Table 10, "significant_ASCs" tab
+#asc_dir<-"/Users/michaelguo/Dropbox/JR_MPRA/asc/"
+# Import the spreadsheet into R
+asc<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/asc/41588_2019_505_MOESM3_ESM.xlsx", sheet=10), stringsAsFactors = F)
+# remove cell tpyes with have -S in them (aka stimulated cell types)
+asc<-asc[!grepl("\\-S", asc$cell_type),]
+# Extracting the chromosome from the ID and making it a column
+asc$chr<-str_split_fixed(asc$het_id, "\\_", 5)[,2]
+# # Extracting the position from the ID and making it a column
+asc$pos<-as.numeric(str_split_fixed(asc$het_id, "\\_", 5)[,3])
+# Empty column for this data in the MPRA (full of zeros)
+mpra$asc<-0
+# For each row in the mpra data, if the asc has a matching chromosome and position then the mpra row gets a 1
+for(i in 1:nrow(mpra)){
+  if(nrow(subset(asc, chr==mpra[i,]$chr & pos==mpra[i,]$snp_end))>0){
+    mpra[i,]$asc<-1
+  }
+}
+```
+
+```{r}
+nrow(mpra)
+```
+
+ATAC-QTL and eQTL (This chunk adds two extra rows wtf is going on)
+```{r, eval=FALSE}
+# Read in Gate ATAC-QTL data
+# Read in Gate et al ATAC-QTL data (PMID: 29988122), Supplemental Table 6
+# qtl_dir<-"/Users/michaelguo/Dropbox/JR_MPRA/qtl/"
+# Read in supplementary table
+qtl<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/qtl/41588_2018_156_MOESM8_ESM.xlsx", sheet=2), stringsAsFactors = F)
+# Create a chromosome column from the SNP column
+qtl$chr<-str_split_fixed(qtl$SNP, "\\:", 2)[,1]
+# Create a position column from the SNP column
+qtl$snp_end<-str_split_fixed(str_split_fixed(qtl$SNP, "\\_", 2)[,1], "\\:", 2)[,2]
+# Subsetting to only the information you want to put in  the mpra
+qtl<-subset(qtl, select=c(chr, snp_end, beta, p.value))
+# Changing the column names to the column names you want to put in the mpra
+names(qtl)[3:4]<-c("atac_qtl_beta", "atac_qtl_pval")
+# Merge the atac qtl data with the mpra
+mpra<-merge(mpra, qtl, by=c("chr", "snp_end"), all.x=T, all.y=F)
+
+# Read in Gate eQTL data
+# Read in the second supplementary table. This one is eqtls not atac-qtls. 
+qtl<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/qtl/41588_2018_156_MOESM10_ESM.xlsx", sheet=2), stringsAsFactors = F)
+# Create a chromosome column from the SNP column
+qtl$chr<-str_split_fixed(qtl$SNP, "\\:", 2)[,1]
+# Create a position column from the SNP column
+qtl$snp_end<-str_split_fixed(str_split_fixed(qtl$SNP, "\\_", 2)[,1], "\\:", 2)[,2]
+#qtl$chr_pos<-paste(qtl$chr, qtl$pos, sep="_")
+# Subsetting to only the information you want to put in  the mpra
+qtl<-subset(qtl, select=c(chr, snp_end, beta, p.value, gene))
+# Changing the column names to the column names you want to put in the mpra
+names(qtl)[3:5]<-c("eqtl_beta", "eqtl_pval", "eqtl_gene")
+# Merge the eqtl data with the mpra
+mpra<-merge(mpra, qtl, by=c("chr", "snp_end"), all.x=T, all.y=F)
+# Eliminate the duplicated SNPs created by this merge
+mpra <- subset(mpra, duplicated(SNP)!=TRUE)
+```
+
+```{r}
+nrow(mpra)
+```
+
+MotifbreakR
+```{r motifbreakr, eval=FALSE}
+#Read in motifbreakr data
+dat.motifbreakr<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/tf/motifbreakr/mpra.motifbreakr.method_log.p1e5.results.txt"),header=T, stringsAsFactors = F,sep="\t")
+# Create a SNP column from the SNP_id column in the motifbreakr data
+dat.motifbreakr$SNP<-gsub("chr", "", dat.motifbreakr$SNP_id)
+# Subset the motifbreakr to only the SNP and the gene
+dat.motifbreakr<-subset(dat.motifbreakr,  select=c(SNP,  geneSymbol))
+# Create an empty column in the mpra for the motifbreakr data
+mpra$tf_motifbreakr<-NA
+# For each row in mpra, if the row's SNP is in the MPRA data set, subset the motifbreakr data to only that SNP and paste the genes as characters in the column with a comma in between and make that the tf_motifbreakr column in the mpra
+for(i in 1:nrow(mpra)){
+  if(mpra[i,]$SNP%in%dat.motifbreakr$SNP){
+    mpra[i,]$tf_motifbreakr<-paste(subset(dat.motifbreakr, SNP==mpra[i,]$SNP)$geneSymbol, collapse=",")
+  }
+}
+```
+
+```{r}
+nrow(mpra)
+```
+
+Nearest TSS
+```{r genes from online, eval=FALSE}
+#Add in genes
+# Load the dataset. This takes a while. This dataset is in hg19
+dat.genes<-fread("ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz", header=F,data.table=F, skip=5)
+# Subset the data to only genes and pick the correct columns you need
+dat.genes<-subset(dat.genes, V3=="gene", select=c(V1, V4, V5, V7,V9))
+# Give names to the columns
+names(dat.genes)<-c("chr", "start", "end","strand", "annotation")
+# Select only protein coding genes from the annotation
+dat.genes<-dat.genes[grepl("protein_coding", dat.genes$annotation),]
+# extract the gene name from the annotation
+dat.genes$gene<-str_split_fixed(dat.genes$annotation, "\\;",10)[,5]
+# eliminate the words gene_name from the gene column
+dat.genes$gene<-gsub("gene_name ", "",dat.genes$gene)
+# Eliminate the quotes from the gene name
+dat.genes$gene<-gsub('"', "", dat.genes$gene, fixed=TRUE)
+# Eliminate the spaces from the gene name
+dat.genes$gene<-gsub(' ', "", dat.genes$gene, fixed=TRUE)
+# Create a new column of tss which is just the start of the gene
+dat.genes$tss<-dat.genes$start
+# For every row in this ebi dataset, if the gene is on the negative strand, then the value for the tss column is actually the value for the end column because that would be the tss
+for(i in 1:nrow(dat.genes)){
+  if(dat.genes[i,]$strand=="-"){
+    dat.genes[i,]$tss<-dat.genes[i,]$end
+  }
+}
+# Eliminate the annotation and strand columns
+dat.genes<-subset(dat.genes, select=-c(annotation, strand))
+
+#Add nearest tss
+# Create an empty column in the mora for this data 
+mpra$tss<-NA
+# For each row in mpra, subset the tss data so that it is the same chromosome as the row, then create a new column which is the absolute value of the difference of all the tss of that chromosome and and the variant in that row. Then order the data by the distance and pick the row with the shortest ditance to put in that row's tss column because that is the gene with the closest tss 
+for(i in 1:nrow(mpra)){
+   temp<-subset(dat.genes, chr==mpra[i,]$chr)
+   temp$distance<-abs(temp$tss-mpra[i,]$snp_end)
+   temp<-temp[order(temp$distance),]
+  mpra[i,]$tss<-temp[1,]$gene
+ }
+
+```
+```{r}
+nrow(mpra)
+```
+
+This adds the rsID to the data set. 
+```{r, eval=FALSE}
+# read in one of the mouri et al. supplementary tables
+rsid.dat<-read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/Mouri_et_al_replication/MPRA_merge_creation/41588_2022_1056_MOESM4_ESM.xlsx")
+# renaming a column to merge it with the mpra data
+rsid.dat$SNP <- rsid.dat$ld_snp 
+# pick just the SNP and rsid column
+rsid.dat<-unique(subset(rsid.dat, select=c(SNP, rsid)))
+# merge the rsid data with the mpra
+mpra<-merge(mpra, rsid.dat, by="SNP", all.x=T, all.y=F)
+
+missing_rsid_snps <- subset(mpra, is.na(rsid)==TRUE)
+rsid_in_data <- missing_rsid_snps$ld_snp%in%rsid.dat$ld_snp
+# missing_rsid_snps$ld_snp
+```
+
+```{r}
+nrow(mpra)
+```
+
+Creating classifying mpra varaints as emVars, pCREs and no activity variants. This is the unstimulated jurkat filter from Mouri et al. 2022
+```{r, eval=FALSE}
+if(filter=="mouri"){
+#  
+# Manually temporarily set these FDRs and adjusted p-values that are NA to -1 for easier TRUE/FALSE testing. This is fine because p-values will never be -1.
+mpra$Skew.logFDR[is.na(mpra$Skew.logFDR)]<- (-1)
+mpra$A.logPadj_BH[is.na(mpra$A.logPadj_BH)]<- (-1)
+mpra$B.logPadj_BH[is.na(mpra$B.logPadj_BH)]<- (-1)
+
+#For each variant, assign whether it has no activity (nEnhancer_nSkew), is a pCRE only (Enhancer_nSkew) or emVAR (Enhancer_Skew). This is the original filter. The primary tcell filter will be assigned later.
+# First assign every variant the no activity marker
+mpra$mpra_sig<-"nEnhancer_nSkew"
+# This filter calculates the variant category filter. For every row in the mpra data, if the skew FDR and FC BH p-value for allele A or B is greater than 1, then assign the variant as an emvar. If the skew FDr is less than 1 and the FC BH p-value for allele A or B is greater than 1, then assign the variant as a pcre. 
+for(i in 1:nrow(mpra)){
+  if(mpra[i,]$Skew.logFDR>1 & (mpra[i,]$A.logPadj_BH>1 |  mpra[i,]$B.logPadj_BH>1) ){
+    mpra[i,]$mpra_sig<-"Enhancer_Skew"
+  }else if(mpra[i,]$Skew.logFDR<=1 & (mpra[i,]$A.logPadj_BH>1 |  mpra[i,]$B.logPadj_BH>1) ){
+    mpra[i,]$mpra_sig<-"Enhancer_nSkew"
+  }
+}
+
+#Set those -1 FDRs and p-values back to NA
+mpra$Skew.logFDR[mpra$Skew.logFDR<0]<- NA
+mpra$A.logPadj_BH[mpra$A.logPadj_BH<0]<- NA
+mpra$B.logPadj_BH[mpra$B.logPadj_BH<0]<- NA
+#
+}
+```
+
+This is John's code to check that the code selects variants that have a log2FC of enhancer activity > 1 for at least one allele per element.  It will create the mpra_sig column. There already is a column called mpra_sig and this should replace it. This uses the absolute value filter. If this filter is bad then I will have to rerun the correct code and all of the code after it. 
+```{r, eval=FALSE, warning=FALSE}
+if(filter=="tcell"){
+#
+# Create absolute value columns 
+mpra$abs.A.log2FC <- abs(mpra$A.log2FC)
+mpra$abs.B.log2FC <- abs(mpra$B.log2FC)
+# Reset the mpra_sig column
+mpra$mpra_sig<- NA
+# For every row in the mpra, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele and the LogSkew FDR is above 1, then the variant is labeled as an emVar (Enhancer_Skew). Else, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele, then it is labeled as a pCRE (Enhancer_nSkew). If it is niether of those it is a no activity variant (nEnhancer_nSkew). 
+for(i in 1:nrow(mpra)){
+  mpra[i,]$mpra_sig<-ifelse(((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>2)) & mpra[i,]$Skew.logFDR>=1, "Enhancer_Skew", ifelse((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>2), "Enhancer_nSkew", "nEnhancer_nSkew"))
+}
+# 
+}
+```
+
+```{r}
+nrow(mpra)
+```
+
+```{r}
+z <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_test", sep="\t", header=T)
+```
+
+This will remove the bad SNPS and MHC/HLA
+```{r, eval=FALSE}
+nrow(mpra)
+# Eliminate this SNP because it had issue in the sequencing library. 
+bad_snp <- subset(mpra, rsid == "rs5855282")
+bad_snp$SNP
+mpra <- mpra[mpra$SNP != "3:189662658:GT:G",]
+nrow(mpra)
+missing_rsid_snps <- subset(mpra, is.na(rsid)==TRUE)
+mpra$bad_snps <- mpra$ld_snp%in%missing_rsid_snps$ld_snp
+
+# bad_snps2 <- missing_rsid_snps$SNP
+mpra <- subset(mpra, bad_snps == FALSE)
+mpra <- subset(mpra, select=-c(bad_snps))
+nrow(mpra)
+```
+
+```{r}
+nrow(mpra)
+```
+
+Final checks before writing the mpra merge file 
+```{r}
+# names(mpra)
+subset_mpra <- subset(mpra, mpra_sig == "Enhancer_Skew")
+nrow(subset_mpra)
+# emVars (tcell glm) (568 with extra 40 variants)
+subset_mpra2 <- subset(mpra, mpra_sig == "Enhancer_nSkew")
+nrow(subset_mpra2)
+# 1128 pCRES (tcell glm) (1144 with extra 40 variants)
+subset_mpra3 <- subset(mpra, mpra_sig == "nEnhancer_nSkew")
+nrow(subset_mpra3)
+# 16604 no activity (tcell glm) (16607 with extra 40 variants)
+```
+
+
+Write table 
+```{r,eval=FALSE}
+write.table(mpra, paste0(mpra.dir,"/data/",mpra.name), row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+Bring in the table again
+```{r}
+mpra <- read.table(paste0(mpra.dir,"/data/",mpra.name), sep="\t", header=T)
+```
+
+Add top_pics and top_disease
+```{r}
+#For each MPRA variant, find the pics for all the diseases and make max_pics the maximum of all of those values
+mpra.pics <- subset(mpra, select=c(MS_pics,RA_pics,UC_pics,T1D_pics,IBD_pics,Crohns_pics,Psoriasis_pics))
+
+# Make the NAs for pics -1
+mpra.pics$MS_pics[is.na(mpra.pics$MS_pics)]<- (-1)
+mpra.pics$RA_pics[is.na(mpra.pics$RA_pics)]<- (-1)
+mpra.pics$UC_pics[is.na(mpra.pics$UC_pics)]<- (-1)
+mpra.pics$IBD_pics[is.na(mpra.pics$IBD_pics)]<- (-1)
+mpra.pics$T1D_pics[is.na(mpra.pics$T1D_pics)]<- (-1)
+mpra.pics$Crohns_pics[is.na(mpra.pics$Crohns_pics)]<- (-1)
+mpra.pics$Psoriasis_pics[is.na(mpra.pics$Psoriasis_pics)]<- (-1)
+colnames(mpra.pics)
+mpra.pics$win_pics <- colnames(mpra.pics)[apply(mpra.pics,1,which.max)] # Make a column that is called win_pics which will give me the name of the pics column with the best 
+
+mpra.pics$max_pics <- NA # This creates a column full of NAs for the loop to fill
+
+for(i in 1:nrow(mpra.pics)){
+  if(mpra.pics[i,]$win_pics=="MS_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$MS_pics
+  } # if win_pics says MS_pics then the max_pics is MS_pics
+  if(mpra.pics[i,]$win_pics=="RA_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$RA_pics
+  } # if win_pics says RA_pics then the max_pics is RA_pics
+  if(mpra.pics[i,]$win_pics=="UC_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$UC_pics
+  } # if win_pics says UC_pics then the max_pics is UC_pics
+  if(mpra.pics[i,]$win_pics=="IBD_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$IBD_pics
+  } # if win_pics says IBD_pics then the max_pics is IBD_pics
+  if(mpra.pics[i,]$win_pics=="Crohns_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Crohns_pics
+  } # if win_pics says Crohns_pics then the max_pics is Crohns_pics
+  if(mpra.pics[i,]$win_pics=="Psoriasis_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Psoriasis_pics
+  } # if win_pics says Psoriasis_pics then the max_pics is Psoriasis_pics
+   if(mpra.pics[i,]$win_pics=="T1D_pics"){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$T1D_pics
+  } # if win_pics says T1D_pics then the max_pics is T1D_pics
+}
+
+# Make the MPRA pics columns which are NA return to NA
+mpra.pics$MS_pics[mpra.pics$MS_pics<0]<- NA
+mpra.pics$RA_pics[mpra.pics$RA_pics<0]<- NA
+mpra.pics$UC_pics[mpra.pics$UC_pics<0]<- NA
+mpra.pics$IBD_pics[mpra.pics$IBD_pics<0]<- NA
+mpra.pics$T1D_pics[mpra.pics$T1D_pics<0]<- NA
+mpra.pics$Crohns_pics[mpra.pics$Crohns_pics<0]<- NA
+mpra.pics$Psoriasis_pics[mpra.pics$Psoriasis_pics<0]<- NA
+
+```
+
+Putting the max_pics and win_pics back into mpra
+```{r}
+mpra.pics$top_disease <- str_extract(mpra.pics$win_pics, "[^_]+")
+mpra$top_disease <- mpra.pics$top_disease 
+mpra$top_pics <- mpra.pics$max_pics
+```
+
+```{r}
+nrow(mpra)
+```
+
+Write table 
+```{r,eval=FALSE}
+write.table(mpra, (paste0(mpra.dir,"/data/",mpra.name)), row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+Bring in the table again
+```{r}
+mpra <- read.table(paste0(mpra.dir,"/data/",mpra.name), sep="\t", header=T)
+```
+
+MPRA merge checks for DHS
+```{r}
+original_mpra <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/mpra_data_merge.txt", header=T, stringsAsFactors = F, sep="\t")
+original_mpra_dhs <- subset(original_mpra, select=c(SNP,dhs_CD4,dhs_Jurkat,dhs_CD8,dhs_Tcell_merged,dhs_all))
+mpratest <- subset(mpra, select=c(SNP,dhs_CD4,dhs_Jurkat,dhs_CD8,dhs_Tcell_merged,dhs_all))
+dhs_merged <- merge(mpratest, original_mpra_dhs, by=c("SNP"))
+identical(dhs_merged[["dhs_CD4.x"]],dhs_merged[["dhs_CD4.y"]])
+# FALSE! 
+
+dhs_merged$results = ifelse(dhs_merged$dhs_CD4.x > dhs_merged$dhs_CD4.y, 'Column1', 
+                      ifelse(dhs_merged$dhs_CD4.x < dhs_merged$dhs_CD4.y, 'Column2', 'None'))
+
+# There should only be "None" in the column we just created
+
+class(dhs_merged$dhs_CD4.x)
+class(dhs_merged$dhs_CD4.y)
+
+# It is okay if one is an integer and one is a numeric 
+```
+
+
+Find the extra variants in the MPRA which are in the 
+```{r}
+# Collection of SNPs in MPRA
+set1 <- paste(mpra$SNP)
+# Selection of SNPs in the merged MPRA
+set2 <- paste(mpra_out$SNP)
+# Create a venn diagram of the two SNP list to see which SNPs don't overlap
+library(ggvenn)
+B <-list("mpra merge"=set1, ".out file"=set2)
+names(B) <- c("mpra merge",".out file")
+venn_diagram_plot <- ggvenn(B, set_name_size = 5, fill_color = c("springgreen2","forestgreen"),show_elements = TRUE, label_sep = "\n") + 
+  ggtitle("mpra merge vs. .out file") +
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"))
+venn_diagram_plot
+mpra[9810,]
+mpra$SNP%in%mpra_out$SNP
+xtra <- mpra$SNP[duplicated(mpra$SNP)]
+extra_snps <- nrow(subset(mpra, is.na(SNP)==TRUE))
 ```
 

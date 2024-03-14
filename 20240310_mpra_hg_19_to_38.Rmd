@@ -1,0 +1,211 @@
+---
+title: "hg19 to hg38"
+output: html_document
+date: "2023-03-11"
+---
+
+The goal of this mark down is to create a better mpra merge file. This file will have both hg19 and hg38 SNPs.
+
+```{r}
+library(ggvenn)
+```
+
+Insert MPRA directory here
+```{r}
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+mpra.name <- "20240310_tcell_glm_mpra_merge"
+mpra.path <- paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt")
+```
+
+Create a bed file for the lift over
+```{r}
+# Load MPRA data (change data set by pasting different directory)
+mpra <- read.table(mpra.path, sep="\t", header=T)
+# How many rows in the MPRA data?
+nrow(mpra)
+```
+
+## 1. Put hg38 names into table
+
+Compare John and Mike's version of the hg38 liftover table
+```{r}
+#hg38_liftover <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/mpra_snps.hg38_liftover.txt", sep="", header=T)
+#hg38_conversion <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/231011_Mouri_hg19_to_hg38_conversion.txt", sep="\t", header=T)
+#hg38_liftover$hg19_ld_snp <- hg38_liftover$snpid_hg19
+#liftover_merge <- merge(hg38_liftover,hg38_conversion, by="hg19_ld_snp")
+#liftover_merge$agree<- liftover_merge$hg38_pos%in%liftover_merge$pos_hg38
+#disagree <- subset(liftover_merge, agree==FALSE)
+# Differences : 11:118545772:TC:T,17:34839662:C:CG
+```
+
+This is the hg19 and hg38 data. We need to put this data into MPRA merge. Make the snpid_hg38 by combining different parts of the exisitng columns
+```{r}
+hg38_liftover <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/mpra_snps.hg38_liftover.txt", sep="", header=T)
+# Get rid of the word "chr" in the chromosome column, so only the number remains
+hg38_liftover_chr_mod <- gsub("chr", "", hg38_liftover$chr)
+# Get rid of the numbers on the snpid_hg19 to be left with the alleles
+hg38_liftover_id_mod <- gsub("[0-9]+", "", hg38_liftover$snpid_hg19)
+# Get rid of double colon
+hg38_liftover_id_mod <- gsub("::", ":", hg38_liftover_id_mod)
+# create the SNP ID out of all the pieces you just created
+hg38_id <- paste0(hg38_liftover_chr_mod,":",hg38_liftover$pos_hg38,hg38_liftover_id_mod)
+# Make the SNPID into a column
+hg38_liftover$hg38_id <- hg38_id
+# Give the data frame better column names
+colnames(hg38_liftover) <- c("chr38","pos38","SNP19","SNP38")
+```
+
+SNP19 and SNP38 must be in the same format for the merge to work
+
+
+Loading the MPRA
+```{r}
+# Load MPRA data (change data set by pasting different directory)
+mpra <- read.table(mpra.path, sep="\t", header=T)
+# How many rows in the MPRA data?
+nrow(mpra)
+# Making a new column called SNP19 which are the SNPs of genome 19
+mpra$SNP19 <- mpra$SNP
+```
+
+Merge 38 SNP into mpra
+```{r}
+# Merge MPRA with the 
+new_mpra <- merge(mpra, hg38_liftover, by="SNP19")
+# Collection of SNPs in MPRA
+set1 <- paste(mpra$SNP)
+# Selection of SNPs in the merged MPRA
+set2 <- paste(new_mpra$SNP)
+# Create a venn diagram of the two SNP list to see which SNPs don't overlap
+library(ggvenn)
+B <-list("mpra"=set1, "new_mpra"=set2)
+names(B) <- c("mpra"," mpra merged with SNP38")
+venn_diagram_plot <- ggvenn(B, set_name_size = 5, fill_color = c("springgreen2","forestgreen"),show_elements = TRUE, label_sep = "\n") + 
+  ggtitle("mpra vs. mpra merged with SNP38") +
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"))
+venn_diagram_plot
+```
+
+We now need to change lead_snp, ld_snp, start_snp, end_snp
+
+Replacing columns with columns that say SNP19
+```{r}
+new_mpra$chr19 <- new_mpra$chr
+new_mpra$lead_snp19 <- new_mpra$lead_snp
+new_mpra$ld_snp19 <- new_mpra$ld_snp
+new_mpra$snp_start19 <- new_mpra$snp_start
+new_mpra$snp_end19 <- new_mpra$snp_end
+new_mpra$ID19 <- new_mpra$ID
+
+new_mpra <-  subset(new_mpra, select = -c(snp_end,snp_start,lead_snp,ld_snp,ID,chr,SNP,pos,comb))
+
+mpra <- new_mpra
+```
+
+
+
+This is John's conversion data which has SNP 38 lead_snp, ld_snp
+First we need to make sure that this and the previous 
+```{r}
+hg38_conversion <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/231011_Mouri_hg19_to_hg38_conversion.txt", sep="\t", header=T)
+# names(hg38_conversion)
+hg38_conversion <- hg38_conversion[,1:11]
+# names(hg38_conversion)
+names(hg38_conversion) <- c("chr19", "pos19", "rsid", "ref", "alt", "ld_snp19", "lead_snp19","r2", "pos38", "ld_snp38","lead_snp38")
+# names(hg38_conversion)
+# Manually fixing the ld_snp that is not in John's data but is in Mike's data
+for(i in 1:nrow(hg38_conversion)){
+ if(hg38_conversion$ld_snp19[i]=="11:118545772:TC:T"){
+   hg38_conversion$ld_snp38[i]="11:118675063:TC:T"
+ }
+   if(hg38_conversion$ld_snp19[i]=="17:34839662:C:CG"){
+   hg38_conversion$ld_snp38[i]="17:36483817:C:CG"
+ }
+}
+# test <- subset(hg38_conversion,ld_snp19=="11:118545772:TC:T")
+
+hg38_conversion$SNP19 <- paste0(hg38_conversion$chr19,":",hg38_conversion$pos19,":",hg38_conversion$ref,":",hg38_conversion$alt)
+
+length(unique(hg38_conversion$SNP19))
+hg38_conversion <- hg38_conversion[!duplicated(hg38_conversion[,c('SNP19')]),]
+
+names(hg38_conversion) <- c("chr19", "pos19", "rsid_38", "ref_38", "alt_38", "ld_snp19", "lead_snp19","r2_38", "pos38", "ld_snp38","lead_snp38","SNP19")
+# names(hg38_conversion)
+```
+
+
+```{r}
+hg38_conversion <- subset(hg38_conversion, select = -c(chr19,lead_snp19,ld_snp19,pos38))
+
+# Merge MPRA and conversion table
+mpra <- merge(mpra, hg38_conversion, by="SNP19")
+
+mpra <- mpra[!duplicated(mpra$SNP19), ]
+# nrow(unique_mpra)
+
+# Now we need to get the names in the new merged correct MPRA correct
+# names(mpra)
+
+mpra$r2_19 <- mpra$r2
+mpra$rsid_19 <- mpra$rsid
+mpra$ID38 <- paste0(mpra$SNP38,":R:wC")
+mpra$comb38 <- paste0(mpra$SNP38, "_center_fwd_ref")
+
+# Creating the start snp column by modifying the SNP column. Start snp is calculated by getting the postion then subtracting 1. Then subtracting the absolute value of the difference between the number of reference and alternate alleles.
+mpra$snp_start38<-as.numeric(str_split_fixed(mpra$SNP38, "\\:", 4)[,2])-1-abs(nchar(str_split_fixed(mpra$SNP38, "\\:", 4)[,3])-nchar(str_split_fixed(mpra$SNP38, "\\:", 4)[,4]))
+# Create a end_snp column which modifies the SNP column and the values after the first colon and before the second colon
+mpra$snp_end38<-as.numeric(str_split_fixed(mpra$SNP38, "\\:", 4)[,2])
+# names(mpra)
+
+mpra <- subset(mpra, select = -c(r2,rsid))
+names(mpra)
+```
+
+Write the table with both hg19 and hg38
+```{r}
+# write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38_hg19.txt"), row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+Creating a permanent hg38 without special column names
+```{r}
+mpra <- subset(mpra, select = -c(r2_19,rsid_19,SNP19,lead_snp19,ld_snp19,snp_start19,snp_end19,pos19,chr19,ID19,ref_allele,alt_allele))
+
+mpra$r2 <- mpra$r2_38
+mpra$rsid <- mpra$rsid_38
+mpra$SNP <- mpra$SNP38
+mpra$ld_snp <- mpra$ld_snp38
+mpra$lead_snp <- mpra$lead_snp38
+mpra$pos <- mpra$pos38
+mpra$chr <- mpra$chr38
+mpra$ref_allele <- mpra$ref_38
+mpra$alt_allele <- mpra$alt_38
+mpra$ID <- mpra$ID38
+
+mpra$comb <- mpra$comb38
+mpra$snp_start <- mpra$snp_start38
+mpra$snp_end <- mpra$snp_end38
+
+mpra <- subset(mpra, select = -c(r2_38,rsid_38,SNP38,lead_snp38,ld_snp38,pos38,chr38,ID38,ref_38,alt_38,comb38,snp_start38,snp_end38))
+
+# names(mpra)
+mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
+```
+
+```{r}
+write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), row.names=F, col.names=T, sep="\t", quote=F)
+
+mpra_hg38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
+```
+
+Check on the variants that didn't agree between John and Mike's liftover (11:118545772:TC:T,17:34839662:C:CG)
+```{r}
+mpra38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
+disagree_var1 <- subset(mpra38, SNP=="11:118675063:TC:T")
+disagree_var1
+disagree_var2 <- subset(mpra38, SNP=="17:36483817:C:CG")
+disagree_var2
+```
+
+
+
+

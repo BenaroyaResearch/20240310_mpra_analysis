@@ -5,3 +5,7 @@
 *.Rproj.user
 plots/
 data/
+tcell/
+unstim_jurkat/
+stim_jurkat/
+GM12878/
