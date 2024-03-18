@@ -10,19 +10,20 @@ There will be a place for importing the mpra in which will have to change every 
 
 MPRA files ran through this pipeline:
 OLJR.C_Tcell_emVAR_glm_20240310.out
-OLJR.C_Tcell_emVAR_ttest_20240310.out
 OLJR.A_Jurkat_emVAR_glm_20240310.out
-OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
 
 MPRA files which need to be ran through this pipeline:
+OLJR.C_Tcell_emVAR_ttest_20240310.out
 OLJR.B_GM12878_emVAR_glm_20240310.out
+OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
 
 Hash and unhash the lines at 478 and 548 to prevent writing tables you do not want
 
 Import MPRA, inspect data, and set directories
 ```{r, eval=FALSE}
 # Load the .out file I get from Jax which is just the MPRA data
-mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 # How many rows are in that file?
 nrow(mpra_out)
 # How many columns are in that file?
@@ -30,9 +31,9 @@ ncol(mpra_out)
 # What are the column names in the mpra?
 names(mpra_out)
 # Directory to put the mpra in (with cell type and glm or ttest and no slash at the end)
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/stim_jurkat/glm"
 # Name of MPRA file (end with hg19 for this Rmd)
-mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra.name <- "20240310_stim_jurkat_glm_mpra_merge_hg19.txt"
 # This decides what option to choose for the variant category filter. There are currently two options "mouri" and "tcell
 filter <- "tcell"
 ```
@@ -525,11 +526,7 @@ for(i in 1:nrow(mpra)){
 nrow(mpra)
 ```
 
-```{r}
-z <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_test", sep="\t", header=T)
-```
-
-This will remove the bad SNPS and MHC/HLA
+This will remove the bad SNPS 
 ```{r, eval=FALSE}
 nrow(mpra)
 # Eliminate this SNP because it had issue in the sequencing library. 
@@ -555,13 +552,19 @@ Final checks before writing the mpra merge file
 # names(mpra)
 subset_mpra <- subset(mpra, mpra_sig == "Enhancer_Skew")
 nrow(subset_mpra)
-# emVars (tcell glm) (568 with extra 40 variants)
+# emVars 547 (tcell glm) (568 with extra 40 variants)
+# emVars 220 (unstim_jurkat glm)
+# emVars 229 (stim_jurkat glm)
 subset_mpra2 <- subset(mpra, mpra_sig == "Enhancer_nSkew")
 nrow(subset_mpra2)
-# 1128 pCRES (tcell glm) (1144 with extra 40 variants)
+# 1128 pCREs (tcell glm) (1144 with extra 40 variants)
+# pCREs 9063 (unstim_jurkat glm)
+# pCREs 227 (stim_jurkat glm)
 subset_mpra3 <- subset(mpra, mpra_sig == "nEnhancer_nSkew")
 nrow(subset_mpra3)
 # 16604 no activity (tcell glm) (16607 with extra 40 variants)
+# no activity 9002 (unstim_jurkat glm)
+# no activity 17824 (stim_jurkat glm)
 ```
 
 
@@ -670,7 +673,7 @@ class(dhs_merged$dhs_CD4.y)
 ```
 
 
-Find the extra variants in the MPRA which are in the 
+Find the extra variants in the MPRA which are in the big oligos table (mouri supp 2) but not in the mpra variants table (Mouri supp 1)
 ```{r}
 # Collection of SNPs in MPRA
 set1 <- paste(mpra$SNP)
@@ -689,4 +692,8 @@ mpra$SNP%in%mpra_out$SNP
 xtra <- mpra$SNP[duplicated(mpra$SNP)]
 extra_snps <- nrow(subset(mpra, is.na(SNP)==TRUE))
 ```
+
+
+
+
 

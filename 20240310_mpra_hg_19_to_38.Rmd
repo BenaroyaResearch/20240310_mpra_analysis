@@ -12,8 +12,10 @@ library(ggvenn)
 
 Insert MPRA directory here
 ```{r}
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
-mpra.name <- "20240310_tcell_glm_mpra_merge"
+# mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+# mpra.name <- "20240310_tcell_glm_mpra_merge"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/stim_jurkat/glm"
+mpra.name <- "20240310_stim_jurkat_glm_mpra_merge"
 mpra.path <- paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt")
 ```
 
@@ -163,7 +165,7 @@ names(mpra)
 
 Write the table with both hg19 and hg38
 ```{r}
-# write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38_hg19.txt"), row.names=F, col.names=T, sep="\t", quote=F)
+write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38_hg19.txt"), row.names=F, col.names=T, sep="\t", quote=F)
 ```
 
 Creating a permanent hg38 without special column names
@@ -187,8 +189,11 @@ mpra$snp_end <- mpra$snp_end38
 
 mpra <- subset(mpra, select = -c(r2_38,rsid_38,SNP38,lead_snp38,ld_snp38,pos38,chr38,ID38,ref_38,alt_38,comb38,snp_start38,snp_end38))
 
-# names(mpra)
+names(mpra)
+# May need to add or subtract 2 depending on the amount of columns in the table
 mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
+# mpra <- mpra[,c(72,76,75,77,78,79:82,73,74,1:71)]
+names(mpra)
 ```
 
 ```{r}
@@ -196,6 +201,12 @@ write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), row.names=F, 
 
 mpra_hg38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
 ```
+
+#################
+
+END OF NORMAL SCRIPT
+
+#################
 
 Check on the variants that didn't agree between John and Mike's liftover (11:118545772:TC:T,17:34839662:C:CG)
 ```{r}

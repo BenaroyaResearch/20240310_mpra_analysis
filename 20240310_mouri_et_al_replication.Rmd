@@ -28,7 +28,15 @@ The first input will be the MPRA merge file
 ```{r}
 mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
 mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+
+# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "20240310_tcell_glm" 
 ```
+
 
 ```{r}
 mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
@@ -43,14 +51,7 @@ df <- data.frame(cbind(
   gtable_compare
 ```
 
-An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
-```{r}
-subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
-# plots.dir is the place where your plots are stored 
-plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
-# plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_tcell_glm" 
-```
+
 
 ## Volcano plots
 ```{r}
@@ -70,7 +71,7 @@ mpra_volcano_plots(mpra2, subtitle, plots.dir, plots_id)
 
 
 ```{r}
-mpra_pics(mpra, subtitle, plots.dir, plots_id)
+mpra_pics(mpra,emvars_or_not="F" ,subtitle, plots.dir, plots_id,cell_type="Tcell")
 ```
 
 
@@ -85,19 +86,15 @@ dat_bin_FDR01_hg19.txt.gz
 
 # 2. dhs.pos (MAKE hg38)
 # "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_hg19_WM20190703.txt.gz"
+
+HG#*
 dhs.pos<- read.delim(gzfile("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/hg38_dhs/DHS_Index_and_Vocabulary_hg38_WM20190703.txt.gz"), header=T, stringsAsFactors = F)
 
 # 3. sample.dat
-sample.dat<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_metadata.tsv", sep="\t", header=T, stringsAsFactors = F)
+sample.dat<-read.delim("", sep="\t", header=T, stringsAsFactors = F)
 
 # bring in dhs data
-dhs.dat<-fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/dat_bin_FDR01_hg19.txt.gz")
-#Subset for only DHS peaks that overlap with MPRA in the dhs data
-dhs.dat<-dhs.dat[overlap_index,]
-#Subset for only DHS peaks that overlap with MPRA in the dhs pos data
-dhs.pos<-dhs.pos[overlap_index,]
-# Now combin ehte dhs and dhs pos data
-dhs.dat<-cbind(dhs.pos[,c(1:3)],dhs.dat)
+dhs.dat<-fread("")
 
 # 5. yaxislimit (I have often changed the yaxis limit on this plot)
 yaxislimit_test <- 5.0
@@ -136,6 +133,31 @@ plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
 plots_id <- "20240310_tcell_glm_hg19" 
 ```
+
+
+```{r}
+# 1. merge mpra data (must have chr, snp_start, snp_end, mpra_sig columns)
+
+# 2. dhs.pos
+# HG19
+dhs.pos<- read.delim(gzfile("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_hg19_WM20190703.txt.gz"), header=T, stringsAsFactors = F)
+
+# 3. sample.dat
+sample.dat<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_metadata.tsv", sep="\t", header=T, stringsAsFactors = F)
+
+# HG19
+# bring in dhs data
+dhs.dat<-fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/dat_bin_FDR01_hg19.txt.gz")
+#Subset for only DHS peaks that overlap with MPRA in the dhs data
+
+# 5. yaxislimit (I have often changed the yaxis limit on this plot)
+# yaxislimit_test <- 5.0
+
+mpra_dhs_overlap(mpra, dhs.pos, sample.dat, dhs.dat, subtitle, plots.dir, plots_id)
+```
+```
+
+
 
 ## Allelic Skew
 ```{r}
