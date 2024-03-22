@@ -1,0 +1,218 @@
+---
+title: "pics plot"
+output: html_document
+date: "2024-03-21"
+---
+
+
+```{r}
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+subtitle <- "test"
+# plots.dir is the place where your plots are stored 
+plots.dir <- "NA"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "test" 
+cell_type <- "Tcell"
+```
+
+
+```{r}
+ mpra.pics.plot <- mpra
+# order of gwas diseases
+  gwas.order<- c("Crohns","MS","Psoriasis", "RA","T1D","UC", "IBD" )
+
+# Format the mpra.pics.plot data
+  # replace _CS_ with _PP_
+  names(mpra.pics.plot)<-gsub("_CS_", "_PP_", names(mpra.pics.plot))
+  # Select only certain columns
+  if(cell_type=="Tcell"){
+  mpra.pics.plot<-subset(mpra.pics.plot, project=="TGWAS", select=c(chr, snp_end, ld_snp, lead_snp, r2,                                       rsid,Crohns_pval,Crohns_pics,Crohns_PP_running,MS_pval,MS_pics,MS_PP_running,
+                            Psoriasis_pval,Psoriasis_pics,Psoriasis_PP_running,RA_pval,RA_pics,RA_PP_running,
+                            T1D_pval,T1D_pics,T1D_PP_running,UC_pval,UC_pics,UC_PP_running,IBD_pval,IBD_pics,
+                            IBD_PP_running, dhs_Tcell_merged, dhs_all, mpra_sig))
+  mpra.pics.plot$dhs_merged <- mpra.pics.plot$dhs_Tcell_merged
+  }
+   if(cell_type=="Bcell"){
+  mpra.pics.plot<-subset(mpra.pics.plot, project=="TGWAS", select=c(chr, snp_end, ld_snp, lead_snp, r2,                                       rsid,Crohns_pval,Crohns_pics,Crohns_PP_running,MS_pval,MS_pics,MS_PP_running,
+                            Psoriasis_pval,Psoriasis_pics,Psoriasis_PP_running,RA_pval,RA_pics,RA_PP_running,
+                            T1D_pval,T1D_pics,T1D_PP_running,UC_pval,UC_pics,UC_PP_running,IBD_pval,IBD_pics,
+                            IBD_PP_running, dhs_Bcell_merged, dhs_all, mpra_sig))
+  mpra.pics.plot$dhs_merged <- mpra.pics.plot$dhs_Bcell_merged
+  }
+  # Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region
+  bad_snps<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
+            "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
+            "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
+            "21:36488822:T:C","21:45621817:A:G","6:127457260:A:G",
+            "6:130348257:C:T","7:116895163:G:A","7:51028987:T:A",
+            "2:204592021:G:A", "14:75961511:C:T")
+  mpra.pics.plot<-subset(mpra.pics.plot,  !(chr=="chr6" & snp_end>29691116 & snp_end<33054976) & !(lead_snp%in%bad_snps))
+  
+# For each mpra variant, find the disease with the strongest association and its associated PICS data
+  mpra.pics.plot$top_pval<-NA #Top GWAS p-value for the MPRA variant
+  mpra.pics.plot$top_disease<-NA #Disease corresponding to top GWAS p-value
+  mpra.pics.plot$top_PP_running<-NA #Cummulative sum of posterior probabilities for that variant
+  mpra.pics.plot$top_pics<-NA #PICS probability for that variant in the top GWAS
+
+  for(i in 1:nrow(mpra.pics.plot)){ #Run through each MPRA variant
+  
+  top_pval<-max(mpra.pics.plot[i,grepl("_pval",names(mpra.pics.plot))], na.rm=T) #Find the top GWAS p-value
+  top_disease<-str_split_fixed(names(mpra.pics.plot)[which(mpra.pics.plot[i,]==top_pval)][1], "\\_", 2)[1] #Find the disease corresponding to the top GWAS p-value
+  
+  #Write out GWAS and PICS data for top GWAS p-value
+  mpra.pics.plot[i,]$top_pval<-top_pval
+  mpra.pics.plot[i,]$top_disease<-top_disease
+  mpra.pics.plot[i,]$top_PP_running<-mpra.pics.plot[i,paste0(top_disease, "_PP_running")]
+  mpra.pics.plot[i,]$top_pics<-mpra.pics.plot[i,paste0(top_disease, "_pics")]
+}
+  mpra.pics.plot$top_pics<-as.numeric(mpra.pics.plot$top_pics)
+  mpra.pics.plot$top_PP_running<-as.numeric(mpra.pics.plot$top_PP_running)
+
+  dat.pics<-mpra.pics.plot
+
+# Calculate MPRA/DHS enrichment in PICS fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pics=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" &  top_pics > dat.enrichment[i,]$pics)) #emVar SNP with PICS fine-mapped
+    b<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" &  top_pics <= dat.enrichment[i,]$pics)) #emVar SNP, but PICS not fine-mapped
+    c<-nrow(subset(dat.pics, mpra_sig!="Enhancer_Skew" &  top_pics > dat.enrichment[i,]$pics)) #Not emVar SNP, but PICS fine-mapped
+    d<-nrow(subset(dat.pics, mpra_sig!="Enhancer_Skew" &  top_pics <= dat.enrichment[i,]$pics)) #Not emVar SNP, and not PICS fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, dhs_merged==1 &   top_pics > dat.enrichment[i,]$pics )) #DHS peak overlapping PICS fine-mapped SNP
+    b<-nrow(subset(dat.pics, dhs_merged==1  &  top_pics <= dat.enrichment[i,]$pics)) #DHS peak not overlapping PICS fine-mapped SNP
+    c<-nrow(subset(dat.pics, dhs_merged==0 &  top_pics > dat.enrichment[i,]$pics)) #Not overlapping DHS peak, but PICS fine-mapped SNP
+    d<-nrow(subset(dat.pics, dhs_merged==0 &  top_pics <= dat.enrichment[i,]$pics)) #Not overlapping DHS peak and not PICS fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pics > dat.enrichment[i,]$pics )) #emVar, overlapping DHS peak and PICS fine-mapped
+    b<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pics <= dat.enrichment[i,]$pics)) #emVar and overlapping DHS peak, but not PICS fine-mapped
+    c<-nrow(subset(dat.pics, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pics> dat.enrichment[i,]$pics)) #Either not emVar or not overlapping DHS peak, but PICS fine-mapped
+    d<-nrow(subset(dat.pics, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pics <= dat.enrichment[i,]$pics)) #Either not emVar or not overlapping DHS peak, and not PICS fine-mapped
+  }
+  
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+  
+  
+
+```
+
+
+
+Run this chunk
+```{r}
+# write.table(dat.enrichment, "20240310_tcell_glm_hg38_enrichment_data",row.names = F, col.names = T, sep="\t", quote=F)
+dat.enrichment <- read.table("20240310_tcell_glm_hg38_enrichment_data", header=T, stringsAsFactors = F, sep="\t")
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+```
+
+
+Play with colors in this chunk
+```{r}
+# This code plots the fold enrichment values against the PICS threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+
+   PICS_threshold_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "springgreen",high="forestgreen") +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PICS threshold")+ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for PICS probable causal variants", subtitle =subtitle) 
+PICS_threshold_plot
+```
+
+
+
+This is the chunk with the other plot
+```{r}
+#########################
+  
+
+# emVars loci plot
+  
+  
+#########################
+  
+emvar_lead_snps<-unique(subset(dat.pics, mpra_sig=="Enhancer_Skew")$lead_snp)
+dat.pics<-subset(dat.pics, lead_snp%in%emvar_lead_snps)
+
+  
+ # Calculate MPRA/DHS enrichment in PICS fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pics=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" &  top_pics > dat.enrichment[i,]$pics)) #emVar SNP with PICS fine-mapped
+    b<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" &  top_pics <= dat.enrichment[i,]$pics)) #emVar SNP, but PICS not fine-mapped
+    c<-nrow(subset(dat.pics, mpra_sig!="Enhancer_Skew" &  top_pics > dat.enrichment[i,]$pics)) #Not emVar SNP, but PICS fine-mapped
+    d<-nrow(subset(dat.pics, mpra_sig!="Enhancer_Skew" &  top_pics <= dat.enrichment[i,]$pics)) #Not emVar SNP, and not PICS fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, dhs_merged==1 &   top_pics > dat.enrichment[i,]$pics )) #DHS peak overlapping PICS fine-mapped SNP
+    b<-nrow(subset(dat.pics, dhs_merged==1  &  top_pics <= dat.enrichment[i,]$pics)) #DHS peak not overlapping PICS fine-mapped SNP
+    c<-nrow(subset(dat.pics, dhs_merged==0 &  top_pics > dat.enrichment[i,]$pics)) #Not overlapping DHS peak, but PICS fine-mapped SNP
+    d<-nrow(subset(dat.pics, dhs_merged==0 &  top_pics <= dat.enrichment[i,]$pics)) #Not overlapping DHS peak and not PICS fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in PICS fine-mapping
+    a<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pics > dat.enrichment[i,]$pics )) #emVar, overlapping DHS peak and PICS fine-mapped
+    b<-nrow(subset(dat.pics, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pics <= dat.enrichment[i,]$pics)) #emVar and overlapping DHS peak, but not PICS fine-mapped
+    c<-nrow(subset(dat.pics, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pics> dat.enrichment[i,]$pics)) #Either not emVar or not overlapping DHS peak, but PICS fine-mapped
+    d<-nrow(subset(dat.pics, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pics <= dat.enrichment[i,]$pics)) #Either not emVar or not overlapping DHS peak, and not PICS fine-mapped
+  }
+  
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+  
+  
+# This code plots the fold enrichment values against the PICS threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  PICS_threshold_emvars_loci_plot <-  ggplot(dat.enrichment, aes(fill=-log10(p), y=fold, x=pics)) + 
+    geom_bar(position="dodge", stat="identity", color="black", ill="skyblue")+ scale_colour_brewer(palette = "Blues")+
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PICS threshold")+ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for PICS probable causal variants (emVars loci only plot)", subtitle =subtitle) 
+  
+```
+ 
+ 
+```
+ 
+ 

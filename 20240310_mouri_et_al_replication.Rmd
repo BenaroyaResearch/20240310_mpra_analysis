@@ -24,6 +24,35 @@ library(pegas)
 library(gt)
 ```
 
+
+```{r}
+mpra1<-read.delim(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"), header=T, stringsAsFactors = F, sep="\t")
+mpra2<-read.delim(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"), header=T, stringsAsFactors = F, sep="\t")
+mpra3<-read.delim(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/stim_jurkat/glm/data/20240310_stim_jurkat_glm_mpra_merge_hg38.txt"), header=T, stringsAsFactors = F, sep="\t")
+
+# 4-6 Give a name to each MPRA merge file 
+mpra1_name <- "20240310 Stimulated Tcell glm"
+mpra2_name<- "20240310 Unstimulated Jurkat glm" 
+mpra3_name<- "20240310 Stimulated Jurkat glm" 
+
+# 7-9 Colors of venn diagram (This is optional)
+color1 <- "turquoise2"
+color2 <- "springgreen2"
+color3 <- "forestgreen"
+
+# 10 Title for the venn diagram
+title <- "Variants with high activity and differential expression between alleles (emVars)"
+
+# 11. plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/plots"
+# 12. plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "20240310_mpra_compare_" 
+
+mpra_venn_diagram(mpra1=mpra1, mpra2=mpra2, mpra3=mpra3, mpra1_name=mpra1_name, mpra2_name=mpra2_name, mpra3_name=mpra3_name, color1=color1, color2=color2,color3=color3,title=title, plots.dir=plots.dir, plots_id=plots_id)
+```
+
+
+
 The first input will be the MPRA merge file
 ```{r}
 mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
@@ -50,6 +79,10 @@ df <- data.frame(cbind(
   gtable_compare <- gt(df, rownames_to_stub = TRUE)
   gtable_compare
 ```
+
+
+
+
 
 
 
@@ -84,20 +117,16 @@ dat_bin_FDR01_hg19.txt.gz
 ```{r}
 # 1. merge mpra data (must have chr, snp_start, snp_end, mpra_sig columns)
 
-# 2. dhs.pos (MAKE hg38)
-# "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/original_hg19_dhs_data/DHS_Index_and_Vocabulary_hg19_WM20190703.txt.gz"
+# 2. dhs.pos
 
-HG#*
+# HG38
 dhs.pos<- read.delim(gzfile("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/hg38_dhs/DHS_Index_and_Vocabulary_hg38_WM20190703.txt.gz"), header=T, stringsAsFactors = F)
 
 # 3. sample.dat
-sample.dat<-read.delim("", sep="\t", header=T, stringsAsFactors = F)
+sample.dat<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/hg38_dhs/DHS_Index_and_Vocabulary_metadata.tsv", sep="\t", header=T, stringsAsFactors = F)
 
 # bring in dhs data
-dhs.dat<-fread("")
-
-# 5. yaxislimit (I have often changed the yaxis limit on this plot)
-yaxislimit_test <- 5.0
+dhs.dat<-fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/hg38_dhs/dat_bin_FDR01_hg38.txt.gz")
 
 mpra_dhs_overlap(mpra, dhs.pos, sample.dat, dhs.dat, subtitle, plots.dir, plots_id)
 ```
@@ -214,7 +243,7 @@ mpra_gwas_loci_counts(mpra,mpra.chr.dir_test, subtitle, plots.dir, plots_id)
 ## gwas loci dhs
 ```{r}
 # 1. merge mpra data
-
+ 
 # 2. dat.alleles
 #This file contains one row for each emVar
 #"risk_allele" column shows whether the ref (A) or alt (B) allele is the risk allele
