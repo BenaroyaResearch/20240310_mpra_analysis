@@ -63,7 +63,7 @@ subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
 # plots.dir is the place where your plots are stored 
 plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_tcell_glm" 
+plots_id <- "20240310_tcell_glm_hg38" 
 ```
 
 
@@ -165,6 +165,11 @@ plots_id <- "20240310_tcell_glm_hg19"
 
 
 ```{r}
+mpra_pics(mpra,emvars_or_not="F" ,subtitle, plots.dir, plots_id,cell_type="Tcell")
+```
+
+
+```{r}
 # 1. merge mpra data (must have chr, snp_start, snp_end, mpra_sig columns)
 
 # 2. dhs.pos
@@ -184,26 +189,25 @@ dhs.dat<-fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysi
 
 mpra_dhs_overlap(mpra, dhs.pos, sample.dat, dhs.dat, subtitle, plots.dir, plots_id)
 ```
-```
 
 
 
 ## Allelic Skew
-```{r}
+```{r} 
 dat.skew_file<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/asc/41588_2019_505_MOESM3_ESM.xlsx", sheet=10), stringsAsFactors = F)
 
 mpra_allelic_skew(mpra=mpra, dat.skew=dat.skew_file, stimulation="S", subtitle=subtitle, plots.dir=plots.dir, plots_id=plots_id)
 ```
 
 ## TSS
-```{r}
+```{r} 
 txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
 
 mpra_tss(mpra=mpra,txdb=txdb, subtitle=subtitle, plots.dir=plots.dir, plots_id=plots_id)
 ```
 
 ## caQTL
-```{r}
+```{r} 
 # 1. merge mpra data (must have chr, snp_start, snp_end, LogSkew, mpra_sig columns)
 
 # 2. dat.qtl (From Gate et al ATAC-QTL data (PMID: 29988122), Supplemental Table 6)
@@ -213,7 +217,7 @@ mpra_caqtl(mpra,dat.qtl_test, subtitle, plots.dir, plots_id)
 ```
 
 ## deltaSVM
-```{r}
+```{r} 
 # 1. merge mpra data (must have chr, snp_start, snp_end, SNP, mpra_sig, LogSkew columns)
 
 # 2. dat.deltasvm
@@ -231,17 +235,17 @@ mpra_deltasvm(mpra, cd4, subtitle, plots.dir, plots_id)
 
 
 ## gwas loci counts
-```{r}
+```{r} 
 # 1. merge mpra data (must have chr, snp_end,ld_snp, mpra_sig columns)
 
 # 2. mpra.chr.dir (the directory of the mpra.chr files which are created through plink the end must be "mpra.chr")
-mpra.chr.dir_test <- "/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/annotate_mpra/ld/ld/mpra.chr"
+mpra.chr.dir <- "/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/annotate_mpra/ld/ld/mpra.chr"
 
-mpra_gwas_loci_counts(mpra,mpra.chr.dir_test, subtitle, plots.dir, plots_id)
+mpra_gwas_loci_counts(mpra,mpra.chr.dir, subtitle, plots.dir, plots_id)
 ```
 
 ## gwas loci dhs
-```{r}
+```{r} 
 # 1. merge mpra data
  
 # 2. dat.alleles
@@ -259,7 +263,7 @@ textylimit_test <- 5
 mpra_gwas_loci_dhs(mpra, dat.alleles_test, textylimit_test , subtitle, plots.dir, plots_id)
 ```
 ## Histone chromhmm
-```{r}
+```{r} 
 # 1. merge mpra data (must have chr, snp_start, snp_end, ID, snp_sig and dhs_Tcell_merged columns)
 
 # 2. manifest.histone (manifest file containing file paths to ENCODE histone ChIP bed files for T cells)

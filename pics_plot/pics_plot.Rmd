@@ -131,7 +131,7 @@ Play with colors in this chunk
   dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
 
    PICS_threshold_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
-    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "springgreen",high="forestgreen") +
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A") +
     facet_grid(~mpra)+
     theme_bw()+ 
     geom_hline(yintercept=1, linetype="dashed", color = "black")+

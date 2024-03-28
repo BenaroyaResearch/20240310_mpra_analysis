@@ -13,7 +13,6 @@ OLJR.C_Tcell_emVAR_glm_20240310.out
 OLJR.A_Jurkat_emVAR_glm_20240310.out
 
 MPRA files which need to be ran through this pipeline:
-OLJR.C_Tcell_emVAR_ttest_20240310.out
 OLJR.B_GM12878_emVAR_glm_20240310.out
 OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
 
@@ -24,6 +23,7 @@ Import MPRA, inspect data, and set directories
 # Load the .out file I get from Jax which is just the MPRA data
 # mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+head(mpra_out)
 # How many rows are in that file?
 nrow(mpra_out)
 # How many columns are in that file?
@@ -37,6 +37,14 @@ mpra.name <- "20240310_stim_jurkat_glm_mpra_merge_hg19.txt"
 # This decides what option to choose for the variant category filter. There are currently two options "mouri" and "tcell
 filter <- "tcell"
 ```
+
+Filter for greater than 20 plasmids for both the A and B allele
+```{r}
+nrow(mpra_out) # 18326 (tcell, unstim jurkat)
+mpra_out <- subset(mpra_out, A_Ctrl_Mean>=20 & B_Ctrl_Mean>=20)
+nrow(mpra_out) # 18182(tcell), 18070(unstim jurkat), 18227 (stim jurkat)
+```
+
 
 This code will make columns the same name as the analysis I'm about to run so things are not annoying.
 ```{r, eval=FALSE}
@@ -452,6 +460,7 @@ for(i in 1:nrow(mpra)){
  }
 
 ```
+
 ```{r}
 nrow(mpra)
 ```
@@ -552,19 +561,19 @@ Final checks before writing the mpra merge file
 # names(mpra)
 subset_mpra <- subset(mpra, mpra_sig == "Enhancer_Skew")
 nrow(subset_mpra)
-# emVars 547 (tcell glm) (568 with extra 40 variants)
-# emVars 220 (unstim_jurkat glm)
+# emVars 545 (tcell glm)  (547 before minimum plasmid cutoff)
+# emVars 218 (unstim_jurkat glm)
 # emVars 229 (stim_jurkat glm)
 subset_mpra2 <- subset(mpra, mpra_sig == "Enhancer_nSkew")
 nrow(subset_mpra2)
-# 1128 pCREs (tcell glm) (1144 with extra 40 variants)
-# pCREs 9063 (unstim_jurkat glm)
-# pCREs 227 (stim_jurkat glm)
+# pCREs 1125 (tcell glm) (1128 before minimum plasmid cutoff)
+# pCREs 8982 (unstim_jurkat glm)
+# pCREs 225 (stim_jurkat glm)
 subset_mpra3 <- subset(mpra, mpra_sig == "nEnhancer_nSkew")
 nrow(subset_mpra3)
-# 16604 no activity (tcell glm) (16607 with extra 40 variants)
-# no activity 9002 (unstim_jurkat glm)
-# no activity 17824 (stim_jurkat glm)
+# no activity 16471 (tcell glm) (16604 before minimum plasmid cutoff)
+# no activity 8829 (unstim_jurkat glm)
+# no activity 17732 (stim_jurkat glm)
 ```
 
 
