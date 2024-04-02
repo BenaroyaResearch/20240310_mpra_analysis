@@ -1,0 +1,334 @@
+---
+title: "UK Biobank Fine Mapping Enrichment"
+output: html_document
+author: Max Dippel
+date: "2024-03-29"
+---
+
+The goal of this plot is to create an emVars enrichment plot with UK Biobank data instead of PICS data. First, John wants a plot of enrichment for all the traits at once then every trait individually. 
+
+Load packages
+```{r}
+library(data.table)
+```
+
+Load the UK Biobank data
+```{r}
+# Load data
+biobank <- fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/release1.1/UKBB_94traits_release1.bed.gz", sep = '\t')
+# Give names to the columns based on the information
+names(biobank) <- c("chromosome","start","end","variant","rsid","allele1","allele2","minorallele","cohort","model_marginal","method", "trait", "region", "maf", "beta_marginal", "se_marginal","chisq_marginal", "pip", "cs_id", "beta_posterior", "sd_posterior", "LD_HWE", "LD_SV")
+head(biobank)
+```
+This spreadsheet has 5.3 million rows. This spreadsheet is in hg19. Choose the SUSIE method.
+
+Details on the columns can be found here
+```{r}
+column_details <- fread("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/release1.1/UKBB_94traits_release1.cols", sep = '\t', header = FALSE)
+```
+
+Subset the data
+```{r}
+# Only method used to fine map is SUSIE
+biobank_data <- subset(biobank, method=="SUSIE")
+# Data goes from 5,377,879 to 3,633,569 rows
+# Eliminate unnecessary columns
+biobank_data_subset <- subset(biobank_data, select=-c(cs_id,LD_HWE,LD_SV,method,region,maf,model_marginal,beta_marginal,se_marginal,chisq_marginal,beta_posterior,sd_posterior,model_marginal,rsid,minorallele))
+# Edit the columns to merge better with mpra
+biobank_data_subset$chromosome <- sub("chr","",biobank_data_subset$chromosome)
+biobank_data_subset$variant <- sub("chr","",biobank_data_subset$variant)
+head(biobank_data_subset)
+```
+
+Merge with mpra data
+```{r}
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# Subset the mpra
+mpra_subset <-subset(mpra, select=c(SNP ,chr, snp_end, ld_snp, lead_snp,r2 , rsid, dhs_Tcell_merged, dhs_all, mpra_sig))
+
+# Merge by variant
+biobank_data_subset$SNP <- biobank_data_subset$variant
+# merge_test1<- merge(mpra_subset, biobank_data_subset, by="SNP")
+# 107865 rows
+# Merge chr:end:allele1:allele2
+#biobank_data_subset$SNP <- paste0(biobank_data_subset$chr,":",biobank_data_subset$end,":",biobank_data_subset$allele1,":",biobank_data_subset$allele2)
+#merge_test2<- merge(mpra_subset, biobank_data_subset, by="SNP")
+# 101963 rows
+# Merge chr:end:allele2:allele1 (0 rows)
+# Merge chr:start:allele2:allele1 (48 rows)
+# Merge chr:start:allele1:allele2 (152 rows)
+
+# Why is there a difference in the SNP column that I made and the variant column that comes with the 
+mismatch_snps <- subset(merge_test1, !(SNP%in%merge_test2$SNP))
+# They are all indels. Merge by SNP so you can incorporate indels.
+mpra_biobank_merge <- merge(mpra_subset, biobank_data_subset, by="SNP", all.x = TRUE)
+mpra_biobank_merge
+```
+
+For a single trait, I will create an enrichment test with emvars and pips, then subset by that trait. For the plot with all the traits I will create the plot
+```{r}
+mpra_biobank_merge_all_traits <- mpra_biobank_merge
+# Order the rows by pics prob
+mpra_biobank_merge_all_traits <- mpra_biobank_merge_all_traits[order(-mpra_biobank_merge_all_traits$pip),]
+mpra_biobank_merge_all_traits <- mpra_biobank_merge_all_traits [!duplicated(mpra_biobank_merge_all_traits [,"SNP"]),]
+```
+
+```{r}
+#######################
+# Enrichment plots
+#######################
+mpra_biobank_merge_all_traits_plot <- mpra_biobank_merge_all_traits
+
+# change the name of the dhs column to be  cell type agnostic 
+  mpra_biobank_merge_all_traits_plot$dhs_merged <- mpra_biobank_merge_all_traits_plot$dhs_Tcell_merged
+
+# Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region
+bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
+            "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
+            "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
+            "21:36488822:T:C","21:45621817:A:G","6:127457260:A:G",
+            "6:130348257:C:T","7:116895163:G:A","7:51028987:T:A",
+            "2:204592021:G:A", "14:75961511:C:T")
+  mpra_biobank_merge_all_traits_plot<-subset(mpra_biobank_merge_all_traits_plot,  !(chr=="chr6" & snp_end>29691116 & snp_end<33054976) & !(lead_snp%in%bad_snps19))
+  
+  mpra_biobank_merge_all_traits_plot$top_pip<-as.numeric(mpra_biobank_merge_all_traits_plot$pip)
+ #  mpra_biobank_merge_all_traits_plot$top_PP_running<-as.numeric(mpra_biobank_merge_all_traits_plot$top_PP_running)
+dat.biobank<-mpra_biobank_merge_all_traits_plot
+
+# Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+################
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #emVar SNP with pip fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #emVar SNP, but pip not fine-mapped
+    c<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #Not emVar SNP, but pip fine-mapped
+    d<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #Not emVar SNP, and not pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #DHS peak overlapping fine-mapped SNP
+    b<-nrow(subset(dat.biobank, dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #DHS peak not overlapping fine-mapped SNP
+    c<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip > dat.enrichment[i,]$pip)) #Not overlapping DHS peak, but  fine-mapped SNP
+    d<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip <= dat.enrichment[i,]$pip)) #Not overlapping DHS peak and pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #emVar, overlapping DHS peak and fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #emVar and overlapping DHS peak, but not fine-mapped
+    c<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, but fine-mapped
+    d<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not fine-mapped
+  }
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+##################  
+  
+  
+# This code plots the fold enrichment values against the uk_biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  
+   uk_biobank_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle =subtitle) 
+uk_biobank_plot
+
+
+
+#########################
+# emVars loci plot
+#########################
+  
+emvar_lead_snps<-unique(subset(dat.biobank, mpra_sig=="Enhancer_Skew")$lead_snp)
+dat.biobank<-subset(dat.biobank, lead_snp%in%emvar_lead_snps)
+
+  
+ # Calculate MPRA/DHS enrichment in uk_biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk_biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #emVar SNP with uk_biobank fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #emVar SNP, but uk_biobank not fine-mapped
+    c<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #Not emVar SNP, but uk_biobank fine-mapped
+    d<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #Not emVar SNP, and not uk_biobank fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk_biobank fine-mapping
+    a<-nrow(subset(dat.biobank, dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #DHS peak overlapping uk_biobank fine-mapped SNP
+    b<-nrow(subset(dat.biobank, dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #DHS peak not overlapping uk_biobank fine-mapped SNP
+    c<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip > dat.enrichment[i,]$pip)) #Not overlapping DHS peak, but uk_biobank fine-mapped SNP
+    d<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip <= dat.enrichment[i,]$pip)) #Not overlapping DHS peak and not uk_biobank fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #emVar, overlapping DHS peak and uk biobank fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #emVar and overlapping DHS peak, but not uk biobank fine-mapped
+    c<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, but uk biobank fine-mapped
+    d<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not uk biobank fine-mapped
+  }
+  
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+  
+  
+# This code plots the fold enrichment values against the uk biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  
+  uk_biobank_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
+    facet_grid(~mpra) +
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping (emVars loci only plot)", subtitle = subtitle) 
+  
+ uk_biobank_emvars_loci_plot
+ 
+plots.dir <-  "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots"
+plots_id <- "20240310_tcell_glm"
+# creating the plot name from the plots_id
+plots_name1 <- paste0(plots_id, "_","uk_bloodbank_enrichment_all_traits",".pdf")
+# Saving the plot in the plots directory 
+ggsave(plots_name1,plot = uk_biobank_plot, path = plots.dir, width = 10, height = 5) 
+# Do the same for the second plot
+plots_name2 <- paste0(plots_id, "_", "uk_biobank_emvars_loci_enrichment_all_traits",".pdf")
+ggsave(plots_name2,plot = uk_biobank_emvars_loci_plot, path = plots.dir, width = 10, height = 5) 
+
+```
+Test for each disease whether emvars are enriched for 0.5 pip in uk biobank 
+```{r}
+# How many traits are there?
+length(na.omit(unique(mpra_biobank_merge$trait)))
+# 82 traits which have the same SNP as the MPRA data
+trait_list <- na.omit(unique(mpra_biobank_merge$trait))
+# Set up heat map for all the diseases
+  dat.uk.biobank.heatmap<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2)))
+
+for(t in trait_list){
+  
+# Subset to a single trait and select uk biobank columns 
+biobank_single_trait <- subset(mpra_biobank_merge, trait==t, select=c(chromosome,start,end,variant,allele1,allele2,cohort,trait,pip,SNP))
+# Add the rest of the mpra 
+single_trait_mpra_biobank <- merge(mpra_subset, biobank_single_trait, by=c("SNP"), all.x = TRUE)
+# Make the SNPs unique
+single_trait_mpra_biobank <- single_trait_mpra_biobank[order(-single_trait_mpra_biobank$pip),]
+single_trait_mpra_biobank <- single_trait_mpra_biobank [!duplicated(single_trait_mpra_biobank [,"SNP"]),]
+
+single_trait_mpra_biobank_plot <- single_trait_mpra_biobank
+
+# change the name of the dhs column to be  cell type agnostic 
+  single_trait_mpra_biobank_plot$dhs_merged <- single_trait_mpra_biobank_plot$dhs_Tcell_merged
+
+# Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region
+bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
+            "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
+            "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
+            "21:36488822:T:C","21:45621817:A:G","6:127457260:A:G",
+            "6:130348257:C:T","7:116895163:G:A","7:51028987:T:A",
+            "2:204592021:G:A", "14:75961511:C:T")
+  single_trait_mpra_biobank_plot<-subset(single_trait_mpra_biobank_plot,  !(chr=="chr6" & snp_end>29691116 & snp_end<33054976) & !(lead_snp%in%bad_snps19))
+  
+  single_trait_mpra_biobank_plot$top_pip<-as.numeric(single_trait_mpra_biobank_plot$pip)
+  
+dat.biobank<-single_trait_mpra_biobank_plot
+
+# Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2), times=3), 
+                     disease=rep(rep(c("all"), times=5), times=3), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=5), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+################
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #emVar SNP with pip fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #emVar SNP, but pip not fine-mapped
+    c<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #Not emVar SNP, but pip fine-mapped
+    d<-nrow(subset(dat.biobank, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #Not emVar SNP, and not pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #DHS peak overlapping fine-mapped SNP
+    b<-nrow(subset(dat.biobank, dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #DHS peak not overlapping fine-mapped SNP
+    c<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip > dat.enrichment[i,]$pip)) #Not overlapping DHS peak, but  fine-mapped SNP
+    d<-nrow(subset(dat.biobank, dhs_merged==0 &  top_pip <= dat.enrichment[i,]$pip)) #Not overlapping DHS peak and pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #emVar, overlapping DHS peak and fine-mapped
+    b<-nrow(subset(dat.biobank, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #emVar and overlapping DHS peak, but not fine-mapped
+    c<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, but fine-mapped
+    d<-nrow(subset(dat.biobank, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not fine-mapped
+  }
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+##################  
+  
+# This code plots the fold enrichment values against the uk_biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2))
+  dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05,0.1,0.15,0.2))
+  
+   uk_biobank_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle =subtitle) 
+uk_biobank_plot
+
+disease_enrichment_data <- subset(dat.enrichment, mpra=="mpra")
+fold <- disease_enrichment_data$fold
+dat.uk.biobank.heatmap[[t]] <- fold
+dat.uk.biobank.heatmap
+}
+
+  
+```
+
+
+
+
+

@@ -103,9 +103,7 @@ mpra_volcano_plots(mpra2, subtitle, plots.dir, plots_id)
 ```
 
 
-```{r}
-mpra_pics(mpra,emvars_or_not="F" ,subtitle, plots.dir, plots_id,cell_type="Tcell")
-```
+   
 
 
 ## dhs overlap
