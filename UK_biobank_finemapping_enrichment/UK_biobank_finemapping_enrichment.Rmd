@@ -10,6 +10,7 @@ The goal of this plot is to create an emVars enrichment plot with UK Biobank dat
 Load packages
 ```{r}
 library(data.table)
+library(tidyverse)
 ```
 
 Load the UK Biobank data
@@ -46,6 +47,14 @@ mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2
 mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 # Subset the mpra
 mpra_subset <-subset(mpra, select=c(SNP ,chr, snp_end, ld_snp, lead_snp,r2 , rsid, dhs_Tcell_merged, dhs_all, mpra_sig))
+mpra_subset$SNP19 <- mpra_subset$SNP
+
+# Adding hg38 column in the data
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt"
+mpra38<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+mpra38 <- subset(mpra38,select=c(SNP19,SNP38))
+
+mpra_subset <- merge(mpra_subset,mpra38,by="SNP19")
 
 # Merge by variant
 biobank_data_subset$SNP <- biobank_data_subset$variant
@@ -60,7 +69,7 @@ biobank_data_subset$SNP <- biobank_data_subset$variant
 # Merge chr:start:allele1:allele2 (152 rows)
 
 # Why is there a difference in the SNP column that I made and the variant column that comes with the 
-mismatch_snps <- subset(merge_test1, !(SNP%in%merge_test2$SNP))
+# mismatch_snps <- subset(merge_test1, !(SNP%in%merge_test2$SNP))
 # They are all indels. Merge by SNP so you can incorporate indels.
 mpra_biobank_merge <- merge(mpra_subset, biobank_data_subset, by="SNP", all.x = TRUE)
 mpra_biobank_merge
@@ -95,6 +104,9 @@ bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
   mpra_biobank_merge_all_traits_plot$top_pip<-as.numeric(mpra_biobank_merge_all_traits_plot$pip)
  #  mpra_biobank_merge_all_traits_plot$top_PP_running<-as.numeric(mpra_biobank_merge_all_traits_plot$top_PP_running)
 dat.biobank<-mpra_biobank_merge_all_traits_plot
+
+
+write.table(dat.biobank, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","uk_biobank_top_pip_mpra_data"), row.names=FALSE,col.names=TRUE,sep="\t")
 
 # Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
 
@@ -148,7 +160,7 @@ dat.biobank<-mpra_biobank_merge_all_traits_plot
     ylab("Fold Enrichment")+
     geom_text(aes(label=a), position="dodge", vjust=1)+
     geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
-    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle =subtitle) 
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle = "20240310 tcell glm mpra") 
 uk_biobank_plot
 
 
@@ -213,7 +225,7 @@ dat.biobank<-subset(dat.biobank, lead_snp%in%emvar_lead_snps)
     ylab("Fold Enrichment")+
     geom_text(aes(label=a), position="dodge", vjust=1)+
     geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
-    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping (emVars loci only plot)", subtitle = subtitle) 
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping (emVars loci only plot)", subtitle = "20240310 tcell glm mpra") 
   
  uk_biobank_emvars_loci_plot
  
@@ -228,7 +240,10 @@ plots_name2 <- paste0(plots_id, "_", "uk_biobank_emvars_loci_enrichment_all_trai
 ggsave(plots_name2,plot = uk_biobank_emvars_loci_plot, path = plots.dir, width = 10, height = 5) 
 
 ```
-Test for each disease whether emvars are enriched for 0.5 pip in uk biobank 
+
+
+
+Test for each disease whether emvars are enriched for 0.2 pip in uk biobank 
 ```{r}
 # How many traits are there?
 length(na.omit(unique(mpra_biobank_merge$trait)))
@@ -236,7 +251,13 @@ length(na.omit(unique(mpra_biobank_merge$trait)))
 trait_list <- na.omit(unique(mpra_biobank_merge$trait))
 # Set up heat map for all the diseases
   dat.uk.biobank.heatmap<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2)))
-
+  
+  # uk.biobank.heatmap.long.form.data <- data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2),times=82),trait=rep(trait_list,each=5),enrichment=0,p=0)
+  uk.biobank.heatmap.long.form.data <- NULL
+  uk.biobank.heatmap.long.form.data <- data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2),times=82),trait=rep(trait_list,each=5))
+  
+  all_results <- list()
+  
 for(t in trait_list){
   
 # Subset to a single trait and select uk biobank columns 
@@ -316,19 +337,178 @@ dat.biobank<-single_trait_mpra_biobank_plot
     ylab("Fold Enrichment")+
     geom_text(aes(label=a), position="dodge", vjust=1)+
     geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
-    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle =subtitle) 
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle ="20240310 tcell glm mpra") 
 uk_biobank_plot
 
-disease_enrichment_data <- subset(dat.enrichment, mpra=="mpra")
-fold <- disease_enrichment_data$fold
-dat.uk.biobank.heatmap[[t]] <- fold
-dat.uk.biobank.heatmap
+all_results[[t]] <- dat.enrichment
+
 }
 
-  
+uk.biobank.heatmap.long.form <- do.call(rbind, all_results)
+uk.biobank.heatmap.long.form <- rownames_to_column(uk.biobank.heatmap.long.form, var = "trait")
+uk.biobank.heatmap.long.form$trait <- sub("\\.\\d+","",uk.biobank.heatmap.long.form$trait)
+
+uk.biobank.heatmap.long.form.subset <- subset(uk.biobank.heatmap.long.form, mpra=="mpra" & pip==0.2 & fold!="NaN")
+uk.biobank.heatmap.long.form.subset <- subset(uk.biobank.heatmap.long.form.subset, fold>=1)
+new_trait_list <- uk.biobank.heatmap.long.form.subset$trait
+
+uk.biobank.heatmap.long.form.plot.data <- subset(uk.biobank.heatmap.long.form, trait %in% new_trait_list & mpra=="mpra")
+
+uk.biobank.heatmap.long.form.mpra.enrich.plot <- ggplot(data.frame(uk.biobank.heatmap.long.form.plot.data), aes(x = as.character(trait), y = as.character(pip))) +
+  geom_point(color="black",aes(size = -log10(p), fill=fold), shape=21) + 
+  xlab("Selected triats") + ylab("UK biobank PIP") + 
+  ggtitle("Uk Biobank of enrichment of mpra emVar for specific triats") + 
+  scale_fill_gradientn(colors=c("goldenrod1","springgreen2","turquoise2"),limits = c(0, max(uk.biobank.heatmap.long.form.plot.data$fold)))  +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) + theme_bw() + theme(plot.background = element_blank(),panel.background = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())
+uk.biobank.heatmap.long.form.mpra.enrich.plot
+ ggsave("uk_biobank_selected_traits_fold_p_heat_map.pdf",plot = uk.biobank.heatmap.long.form.mpra.enrich.plot, path = "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots", bg='#ffffff', width = 10, height = 5)
+ 
+ 
+# Decided to only go forward with T2D, Lym, IBD
+ 
+ uk.biobank.heatmap.IBD <- subset(uk.biobank.heatmap.long.form, trait=="IBD")
+ 
+  uk_biobank_plot_IBD <-  ggplot(uk.biobank.heatmap.IBD, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(uk.biobank.heatmap.IBD$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar and DHS enrichment for UK biobank finemapping for Inflammatory bowel disease", subtitle ="20240310 tcell glm mpra") 
+uk_biobank_plot_IBD
+
+ ggsave("uk_biobank_IBD_fold_enrichemnt_plot.pdf",plot = uk_biobank_plot_IBD, path = "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots", bg='#ffffff', width = 10, height = 5)
+
+uk.biobank.heatmap.T2D <- subset(uk.biobank.heatmap.long.form, trait=="T2D")
+ 
+  uk_biobank_plot_T2D <-  ggplot(uk.biobank.heatmap.T2D, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(uk.biobank.heatmap.T2D$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar and DHS enrichment for UK biobank finemapping for Type 2 diabetes", subtitle ="20240310 tcell glm mpra") 
+uk_biobank_plot_T2D
+
+ ggsave("uk_biobank_T2D_fold_enrichemnt_plot.pdf",plot = uk_biobank_plot_T2D, path = "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots", bg='#ffffff', width = 10, height = 5)
+
+ uk.biobank.heatmap.Lym <- subset(uk.biobank.heatmap.long.form, trait=="Lym")
+ 
+  uk_biobank_plot_Lym <-  ggplot(uk.biobank.heatmap.Lym, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(uk.biobank.heatmap.Lym$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar and DHS enrichment for UK biobank finemapping for Lymphocyte count", subtitle ="20240310 tcell glm mpra") 
+uk_biobank_plot_Lym
+
+ ggsave("uk_biobank_Lym_fold_enrichemnt_plot.pdf",plot = uk_biobank_plot_Lym, path = "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots", bg='#ffffff', width = 10, height = 5)
+ 
+ 
+# Only focusing on Lymphocyte
 ```
 
+Lymphocyte count plot
+```{r}
+# Subset to a single trait and select uk biobank columns 
+biobank_lym <- subset(mpra_biobank_merge, trait=="Lym", select=c(chromosome,start,end,variant,allele1,allele2,cohort,trait,pip,SNP))
 
+# Add the rest of the mpra 
+lym_mpra_biobank <- merge(mpra_subset, biobank_lym, by=c("SNP"), all.x = TRUE)
+# Make the SNPs unique
+lym_mpra_biobank <- lym_mpra_biobank[order(-lym_mpra_biobank$pip),]
+lym_mpra_biobank <- lym_mpra_biobank [!duplicated(lym_mpra_biobank [,"SNP"]),]
 
+lym_mpra_biobank_plot <- lym_mpra_biobank
 
+# change the name of the dhs column to be  cell type agnostic 
+  lym_mpra_biobank_plot$dhs_merged <- lym_mpra_biobank_plot$dhs_Tcell_merged
+
+# Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region
+bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
+            "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
+            "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
+            "21:36488822:T:C","21:45621817:A:G","6:127457260:A:G",
+            "6:130348257:C:T","7:116895163:G:A","7:51028987:T:A",
+            "2:204592021:G:A", "14:75961511:C:T")
+  lym_mpra_biobank_plot<-subset(lym_mpra_biobank_plot,  !(chr=="chr6" & snp_end>29691116 & snp_end<33054976) & !(lead_snp%in%bad_snps19))
+  
+  lym_mpra_biobank_plot$top_pip<-as.numeric(lym_mpra_biobank_plot$pip)
+  
+dat.biobank.lym<-lym_mpra_biobank_plot
+
+# Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment.lym<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+################
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment.lym)){
+  if(dat.enrichment.lym[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank.lym, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment.lym[i,]$pip)) #emVar SNP with pip fine-mapped
+    b<-nrow(subset(dat.biobank.lym, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment.lym[i,]$pip)) #emVar SNP, but pip not fine-mapped
+    c<-nrow(subset(dat.biobank.lym, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment.lym[i,]$pip)) #Not emVar SNP, but pip fine-mapped
+    d<-nrow(subset(dat.biobank.lym, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment.lym[i,]$pip)) #Not emVar SNP, and not pip fine-mapped
+  }
+  if(dat.enrichment.lym[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank.lym, dhs_merged==1 &   top_pip > dat.enrichment.lym[i,]$pip )) #DHS peak overlapping fine-mapped SNP
+    b<-nrow(subset(dat.biobank.lym, dhs_merged==1  &  top_pip <= dat.enrichment.lym[i,]$pip)) #DHS peak not overlapping fine-mapped SNP
+    c<-nrow(subset(dat.biobank.lym, dhs_merged==0 &  top_pip > dat.enrichment.lym[i,]$pip)) #Not overlapping DHS peak, but  fine-mapped SNP
+    d<-nrow(subset(dat.biobank.lym, dhs_merged==0 &  top_pip <= dat.enrichment.lym[i,]$pip)) #Not overlapping DHS peak and pip fine-mapped
+  }
+  if(dat.enrichment.lym[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.biobank.lym, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment.lym[i,]$pip )) #emVar, overlapping DHS peak and fine-mapped
+    b<-nrow(subset(dat.biobank.lym, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment.lym[i,]$pip)) #emVar and overlapping DHS peak, but not fine-mapped
+    c<-nrow(subset(dat.biobank.lym, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment.lym[i,]$pip)) #Either not emVar or not overlapping DHS peak, but fine-mapped
+    d<-nrow(subset(dat.biobank.lym, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment.lym[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not fine-mapped
+  }
+  # Write out data
+  dat.enrichment.lym[i,]$a<-a
+  dat.enrichment.lym[i,]$b<-b
+  dat.enrichment.lym[i,]$c<-c
+  dat.enrichment.lym[i,]$d<-d
+  dat.enrichment.lym[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment.lym[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+##################  
+  
+# This code plots the fold enrichment values against the uk_biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment.lym$pip<-factor(dat.enrichment.lym$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment.lym<-subset(dat.enrichment.lym, pip%in%c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  
+   uk_biobank_plot_lym_full <-  ggplot(dat.enrichment.lym, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment.lym$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    ggtitle("emVar enrichment and DHS enrichment for UK biobank finemapping", subtitle ="20240310 tcell glm mpra") 
+uk_biobank_plot_lym_full
+
+ ggsave("complete_uk_biobank_Lym_all_fold_enrichemnt_plot.pdf",plot = uk_biobank_plot_lym_full, path = "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/plots", bg='#ffffff', width = 10, height = 5)
+ 
+# What variants are that are >0.2 PIP for lym
+high_pip_emvars <- subset(dat.biobank.lym, mpra_sig=="Enhancer_Skew" & top_pip>=0.2)
+high_pip_emvars$SNP38
+high_pip_emvars$rsid
+```
+
+[1] "10:6052734:C:T"   "7:37342861:T:G"   "6:90267049:G:A"   "11:128522042:C:T"
+[1] "rs61839660" "rs60600003" "rs72928038" "rs61907765"
 

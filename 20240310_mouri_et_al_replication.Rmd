@@ -209,9 +209,9 @@ mpra_tss(mpra=mpra,txdb=txdb, subtitle=subtitle, plots.dir=plots.dir, plots_id=p
 # 1. merge mpra data (must have chr, snp_start, snp_end, LogSkew, mpra_sig columns)
 
 # 2. dat.qtl (From Gate et al ATAC-QTL data (PMID: 29988122), Supplemental Table 6)
-dat.qtl_test <-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/qtl/41588_2018_156_MOESM8_ESM.xlsx", sheet=2), stringsAsFactors = F)
+dat.qtl <-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/qtl/41588_2018_156_MOESM8_ESM.xlsx", sheet=2), stringsAsFactors = F)
 
-mpra_caqtl(mpra,dat.qtl_test, subtitle, plots.dir, plots_id)
+mpra_caqtl(mpra,dat.qtl, subtitle, plots.dir, plots_id)
 ```
 
 ## deltaSVM
@@ -240,6 +240,7 @@ mpra_deltasvm(mpra, cd4, subtitle, plots.dir, plots_id)
 mpra.chr.dir <- "/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/annotate_mpra/ld/ld/mpra.chr"
 
 mpra_gwas_loci_counts(mpra,mpra.chr.dir, subtitle, plots.dir, plots_id)
+
 ```
 
 ## gwas loci dhs
@@ -280,8 +281,27 @@ mpra_histone_chromhmm(mpra, manifest.histone, cage, chromhmm,  subtitle, plots.d
 ```
 
 
+```{r}
+# 1. mpra (must have these columns: chr, snp_start, snp_end, SNP, mpra_sig, LogSkew) 
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# 2. motifbreakr.bed.dir 
+motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr.bed"
+# 3. motifbreakr.results.dir
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr_results.txt"
+
+mpra_motifbreakr1(mpra, motifbreakr.bed.dir,motifbreakr.results.dir)
+```
 
 
+```{r}
+# 3. dat.tf (Read in TF ChIP binding sites from ENCODE)
+dat.tf<-fread("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz")
+motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr.bed"
+# 3. motifbreakr.results.dir
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr_results.txt"
+
+mpra_motifbreakr2(mpra.dir=mpra.dir,motifbreakr.results.dir=motifbreakr.results.dir,dat.tf=dat.tf, motifbreakr.bed.dir=motifbreakr.bed.dir, subtitle=subtitle, plots.dir, plots_id)
+```
 
 
 

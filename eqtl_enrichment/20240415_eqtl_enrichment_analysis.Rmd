@@ -1,0 +1,241 @@
+---
+title: "eqtl enrichment analysis"
+output: html_document
+author: Max Dippel
+date: "2024-04-15"
+---
+
+This is a markdown in which we are going to take the eQTL finemapping from this paper (https://doi.org/10.1038/s41588-021-00924-w) and make enrichment plots based on them.
+
+Name mpra and give directories for the mpra table and where the plots should go
+```{r}
+plots.dir <-  "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/plots"
+mpra_name <- "20240310_tcell_glm"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
+```
+
+Name specific fine mapping cell type and method and give the fine mapping directory 
+```{r}
+# Naive CD4 Tcells
+# First plot pair
+finemapping_name <- "eqtl_fm_tcell_ge"
+finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000002/QTD000031.credible_sets.tsv.gz"
+# Second plot pair
+#finemapping_name <- "eqtl_fm_tcell_exon"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000002/QTD000032.credible_sets.tsv.gz"
+# Third plot pair
+#finemapping_name <- "eqtl_fm_tcell_tx"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000002/QTD000033.credible_sets.tsv.gz"
+# Fourth plot pair
+#finemapping_name <- "eqtl_fm_tcell_txrev"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000002/QTD000034.credible_sets.tsv.gz"
+# Fifth plot pair
+#finemapping_name <- "eqtl_fm_tcell_leafcutter"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000002/QTD000035.credible_sets.tsv.gz"
+# Naive Treg Memory cells
+# Sixth plot pair
+#finemapping_name <- "eqtl_fm_treg_ge"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000003/QTD000036.credible_sets.tsv.gz"
+# Seventh plot pair
+#finemapping_name <- "eqtl_fm_treg_exon"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000003/QTD000037.credible_sets.tsv.gz"
+# Eighth plot pair
+#finemapping_name <- "eqtl_fm_treg_tx"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000003/QTD000038.credible_sets.tsv.gz"
+# Ninth plot pair
+#finemapping_name <- "eqtl_fm_treg_txrev"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000003/QTD000039.credible_sets.tsv.gz"
+# Tenth plot pair
+#finemapping_name <- "eqtl_fm_treg_leafcutter"
+#finemapping_dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/eqtl_enrichment/data/eQTL_Catalogue_Tcell_fine_mapping_sumstats/QTS000003/QTD000040.credible_sets.tsv.gz"
+```
+
+
+
+Import fine mapping
+```{r}
+# Import fm data
+eqtl_fm  <- fread(finemapping_dir)
+# Remove chr from variant column
+eqtl_fm$variant <- sub("chr","",eqtl_fm$variant)
+# Change underscores to colons in variant column and rename the column SNP. 
+eqtl_fm$SNP <- gsub("_",":",eqtl_fm$variant)
+eqtl_fm$pip_pvalue <- eqtl_fm$pvalue
+eqtl_fm <- subset(eqtl_fm, select=c("SNP","pip","pip_pvalue"))
+# Rank by PIP and unique by SNP
+# Order the rows by pics prob
+eqtl_fm <- eqtl_fm[order(-eqtl_fm$pip),]
+eqtl_fm <- eqtl_fm [!duplicated(eqtl_fm [,"SNP"]),]
+```
+
+Import MPRA 
+```{r}
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+mpra <-subset(mpra, select=c(SNP ,chr, snp_end, ld_snp, lead_snp,r2 , rsid, dhs_Tcell_merged, dhs_all, mpra_sig))
+```
+
+Merge fine mapping and MPRA
+```{r}
+mpra_fm_data <- merge(eqtl_fm,mpra, by="SNP", all.y=TRUE)
+```
+
+
+```{r}
+#######################
+# Enrichment plots
+#######################
+mpra_fm_enrichment_plot_data <- mpra_fm_data
+
+# change the name of the dhs column to be  cell type agnostic 
+  mpra_fm_enrichment_plot_data$dhs_merged <- mpra_fm_enrichment_plot_data$dhs_Tcell_merged
+
+# Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region
+bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
+            "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
+            "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
+            "21:36488822:T:C","21:45621817:A:G","6:127457260:A:G",
+            "6:130348257:C:T","7:116895163:G:A","7:51028987:T:A",
+            "2:204592021:G:A", "14:75961511:C:T")
+  mpra_fm_enrichment_plot_data <-subset(mpra_fm_enrichment_plot_data,  !(chr=="chr6" & snp_end>29691116 & snp_end<33054976) & !(lead_snp%in%bad_snps19))
+  
+  mpra_fm_enrichment_plot_data$top_pip<-as.numeric(mpra_fm_enrichment_plot_data$pip)
+ #  mpra_fm_enrichment_plot_data$top_PP_running<-as.numeric(mpra_fm_enrichment_plot_data$top_PP_running)
+dat.eqtl.fm<-mpra_fm_enrichment_plot_data
+
+
+write.table(dat.eqtl.fm, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","uk_biobank_top_pip_mpra_data"), row.names=FALSE,col.names=TRUE,sep="\t")
+
+# Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+################
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #emVar SNP with pip fine-mapped
+    b<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #emVar SNP, but pip not fine-mapped
+    c<-nrow(subset(dat.eqtl.fm, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #Not emVar SNP, but pip fine-mapped
+    d<-nrow(subset(dat.eqtl.fm, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #Not emVar SNP, and not pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #DHS peak overlapping fine-mapped SNP
+    b<-nrow(subset(dat.eqtl.fm, dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #DHS peak not overlapping fine-mapped SNP
+    c<-nrow(subset(dat.eqtl.fm, dhs_merged==0 &  top_pip > dat.enrichment[i,]$pip)) #Not overlapping DHS peak, but  fine-mapped SNP
+    d<-nrow(subset(dat.eqtl.fm, dhs_merged==0 &  top_pip <= dat.enrichment[i,]$pip)) #Not overlapping DHS peak and pip fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #emVar, overlapping DHS peak and fine-mapped
+    b<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #emVar and overlapping DHS peak, but not fine-mapped
+    c<-nrow(subset(dat.eqtl.fm, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, but fine-mapped
+    d<-nrow(subset(dat.eqtl.fm, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not fine-mapped
+  }
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+##################  
+  
+  
+# This code plots the fold enrichment values against the uk_biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  
+   eqtl_fm_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
+    facet_grid(~mpra)+
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    labs(title="emVar enrichment and DHS enrichment for eQTL finemapping", subtitle = finemapping_name, caption=mpra_name) 
+eqtl_fm_plot
+
+
+
+#########################
+# emVars loci plot
+#########################
+  
+emvar_lead_snps<-unique(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew")$lead_snp)
+dat.eqtl.fm<-subset(dat.eqtl.fm, lead_snp%in%emvar_lead_snps)
+
+  
+ # Calculate MPRA/DHS enrichment in uk_biobank fine-mapping.
+
+  # creating an empty data frame
+  dat.enrichment<-data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8), times=3), 
+                     disease=rep(rep(c("all"), times=9), times=4), 
+                     mpra=rep(c("mpra", "dhs", "mpra_dhs"), each=12), 
+                     a=0, b=0, c=0, d=0,fold=0, p=0, stringsAsFactors = F)
+
+  # for loop for the stats
+  for(i in 1:nrow(dat.enrichment)){
+  if(dat.enrichment[i,]$mpra=="mpra"){ #Calculate MPRA enrichments in uk_biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #emVar SNP with uk_biobank fine-mapped
+    b<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #emVar SNP, but uk_biobank not fine-mapped
+    c<-nrow(subset(dat.eqtl.fm, mpra_sig!="Enhancer_Skew" &  top_pip > dat.enrichment[i,]$pip)) #Not emVar SNP, but uk_biobank fine-mapped
+    d<-nrow(subset(dat.eqtl.fm, mpra_sig!="Enhancer_Skew" &  top_pip <= dat.enrichment[i,]$pip)) #Not emVar SNP, and not uk_biobank fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="dhs"){ #Calculate DHS enrichments in uk_biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #DHS peak overlapping uk_biobank fine-mapped SNP
+    b<-nrow(subset(dat.eqtl.fm, dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #DHS peak not overlapping uk_biobank fine-mapped SNP
+    c<-nrow(subset(dat.eqtl.fm, dhs_merged==0 &  top_pip > dat.enrichment[i,]$pip)) #Not overlapping DHS peak, but uk_biobank fine-mapped SNP
+    d<-nrow(subset(dat.eqtl.fm, dhs_merged==0 &  top_pip <= dat.enrichment[i,]$pip)) #Not overlapping DHS peak and not uk_biobank fine-mapped
+  }
+  if(dat.enrichment[i,]$mpra=="mpra_dhs"){ #Calcualte MPRA+DHS enrichments in uk biobank fine-mapping
+    a<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" & dhs_merged==1 &   top_pip > dat.enrichment[i,]$pip )) #emVar, overlapping DHS peak and uk biobank fine-mapped
+    b<-nrow(subset(dat.eqtl.fm, mpra_sig=="Enhancer_Skew" & dhs_merged==1  &  top_pip <= dat.enrichment[i,]$pip)) #emVar and overlapping DHS peak, but not uk biobank fine-mapped
+    c<-nrow(subset(dat.eqtl.fm, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip> dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, but uk biobank fine-mapped
+    d<-nrow(subset(dat.eqtl.fm, (mpra_sig!="Enhancer_Skew" | dhs_merged==0) &  top_pip <= dat.enrichment[i,]$pip)) #Either not emVar or not overlapping DHS peak, and not uk biobank fine-mapped
+  }
+  
+  # Write out data
+  dat.enrichment[i,]$a<-a
+  dat.enrichment[i,]$b<-b
+  dat.enrichment[i,]$c<-c
+  dat.enrichment[i,]$d<-d
+  dat.enrichment[i,]$fold<-(a/(a+b))/(c/(c+d)) #Calculate fold enrichment
+  dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
+}
+  
+  
+# This code plots the fold enrichment values against the uk biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
+  dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
+  dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  
+  eqtl_fm_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
+    geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
+    facet_grid(~mpra) +
+    theme_bw()+ 
+    geom_hline(yintercept=1, linetype="dashed", color = "black")+
+    xlab("PIP threshold")+
+    ylab("Fold Enrichment")+
+    geom_text(aes(label=a), position="dodge", vjust=1)+
+    geom_text(aes(label=round(-log10(p),2)), position="dodge", vjust=-0.75) +
+    labs(title="emVar enrichment and DHS enrichment for eQTL finemapping (emVars loci only plot)", subtitle = finemapping_name, caption=mpra_name) 
+  
+eqtl_fm_emvars_loci_plot
+ 
+
+# creating the plot name from the mpra_name and finemapping name
+plots_name1 <- paste0(finemapping_name,"_",mpra_name, "_","eqtl_fine_mapping_enrichment_plot",".pdf")
+# Saving the plot in the plots directory 
+ggsave(plots_name1,plot = eqtl_fm_plot, path = plots.dir, width = 10, height = 5) 
+# Do the same for the second plot
+plots_name2 <- paste0(finemapping_name,"_",mpra_name, "_", "eqtl_fine_mapping_emvars_loci_enrichment_plot",".pdf")
+ggsave(plots_name2,plot = eqtl_fm_emvars_loci_plot, path = plots.dir, width = 10, height = 5) 
+
+```
+
+
+
