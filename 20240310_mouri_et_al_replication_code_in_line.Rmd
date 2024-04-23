@@ -1123,7 +1123,7 @@ ggsave(plots_name2,plot = chromatin_marks_plot, path = plots.dir, width = 7, hei
 ```
 
 # Motifbreakr function
-```{r, eval=FALSE}
+```{r motifbeakr table, eval=FALSE}
 # I am putting this in the form of a function because it takes a very long time to run. Also it is going to be eval=FALSE so the HTML doesn't take forever to be created. 
 mpra_motifbreakr1 <- function(mpra,motifbreakr.bed.dir,motifbreakr.results.dir){
 # subset mpra to only columns you need
@@ -1168,7 +1168,7 @@ mpra_motifbreakr1(mpra=mpra, motifbreakr.bed.dir=motifbreakr.bed.dir,motifbreakr
 ```
 
 # Motifbreakr plots
-```{r, eval=FALSE}
+```{r motifbreakr plots}
 # dat.tf (Read in TF ChIP binding sites from ENCODE)
 dat.tf<-fread("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz")
 # Where would you like the motifbreakr bed file to be located and what would you like it to be called? Please end file name in .bed 
@@ -1292,24 +1292,7 @@ skew_vs_skew_model
 plots_name <- paste0(plots_id,"motifbreakr",".pdf")
 # Saving the plot in the plots directory 
 ggsave(plots_name,plot = motifbreakr_plot, path = plots.dir, width = 7, height = 7)
-
-
-
-# Function outputs
-return_list <- list(motifbreakr_plot, allelic_skew_vs_tf_skew_plot, skew_vs_skew_model,proportion_test_pcre,proportion_test_emvar)
-return(return_list)
-}
 ```
-
-```{r,eval=FALSE}
-# 3. dat.tf (Read in TF ChIP binding sites from ENCODE)
-dat.tf<-fread("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz")
-motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr.bed"
-motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr_results.txt"
-
-mpra_motifbreakr2(mpra.dir=mpra.dir,motifbreakr.results.dir=motifbreakr.results.dir,dat.tf=dat.tf, motifbreakr.bed.dir=motifbreakr.bed.dir, subtitle=subtitle, plots.dir, plots_id)
-```
-
 
 
 
