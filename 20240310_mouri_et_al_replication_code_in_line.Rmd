@@ -4,7 +4,7 @@ output: html_document
 date: "2024-03-10"
 ---
 
- Load the packages
+Load the packages
 ```{r packages, message=FALSE, warning=FALSE}
 library(readxl)
 library(data.table)
@@ -83,15 +83,25 @@ venn_diagram_plot
 
 # MPRA merge hg38
 ```{r mpra hg38}
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
-mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
-
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
+#mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 # An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
-subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
+#subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
 # plots.dir is the place where your plots are stored 
-plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_tcell_glm_hg38" 
+#plots_id <- "20240310_tcell_glm_hg38" 
+
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"
+mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+subtitle <- "unstim_jurkat glm 03/10/24"
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
+# This is where the data is stored
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "20240310_unstim_jurkat_glm_hg38" 
 ```
 
 # Variant category table
@@ -103,9 +113,15 @@ df <- data.frame(cbind(
     nrow(subset(mpra, mpra_sig == "nEnhancer_nSkew")))),
   row.names = c("emVars","pCREs only","No Activity"))
 # Give the data frame the proper headings
-  colnames(df) <- c("Tcell MPRA")
+  colnames(df) <- c(paste0(subtitle, "MPRA"))
   gtable_compare <- gt(df, rownames_to_stub = TRUE)
   gtable_compare
+  
+# How many active elements are there with out the FC filter?
+# Create absolute value columns 
+mpra_merge$abs.A.log2FC <- abs(mpra_merge$A.log2FC)
+mpra_merge$abs.B.log2FC <- abs(mpra_merge$B.log2FC)
+nrow(subset(mpra_merge, (abs.A.log2FC>1 & A.logPadj_BF>2) | (abs.B.log2FC>1 & B.logPadj_BF>2)))
 ```
 
 
@@ -326,14 +342,28 @@ ggsave(plots_name,plot = p_value_rank_dhs_plot, path = plots.dir, width = 7, hei
 
 
 ```{r mpra hg19}
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
-mpra_merge <-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
+#mpra_merge <-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 
-subtitle <- "Tcell glm 03/10/24 Primary Tcell filter hg19"
+#subtitle <- "Tcell glm 03/10/24 Primary Tcell filter hg19"
 # plots.dir is the place where your plots are stored 
-plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+# This is where the data is stored
+#data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_tcell_glm_hg19" 
+#plots_id <- "20240310_tcell_glm_hg19" 
+
+
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
+mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+subtitle <- "Unstim Jurkat glm 03/10/24"
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
+# This is where the data is stored
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "20240310_unstim_jurkat_glm_hg19" 
 ```
 
 
@@ -430,6 +460,8 @@ mpra <- mpra_merge
   dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_all_loci_table"), row.names = F, col.names = T, sep="\t", quote=F)  
+  
    PICS_threshold_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
     facet_grid(~mpra)+
@@ -497,6 +529,9 @@ dat.pics<-subset(dat.pics, lead_snp%in%emvar_lead_snps)
   dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_dhs_loci_only_table"), row.names = F, col.names = T, sep="\t", quote=F)
+  
+  
   PICS_threshold_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
     facet_grid(~mpra) +
@@ -516,6 +551,97 @@ ggsave(plots_name1,plot = PICS_threshold_plot, path = plots.dir, width = 10, hei
 # Do the same for the second plot
 plots_name2 <- paste0(plots_id, "_", "PICS_threshold_emvars_loci",".pdf")
 ggsave(plots_name2,plot = PICS_threshold_emvars_loci_plot, path = plots.dir, width = 10, height = 5) 
+
+
+
+### Sensitivity and specificity calculations ###
+dat.pics<-mpra.pics.plot
+dhs_loci<-F #TRUE if calculation only for loci where a GWAS SNP overlaps a DHS peak
+if(dhs_loci==T){  
+  dat.pics<-subset(dat.pics, lead_snp%in%subset(dat.pics, dhs_Tcell_merged>0)$lead_snp)
+}
+
+#Calculate credible sets
+dat.pics<-dat.pics[order(dat.pics$lead_snp, -dat.pics$top_pics),] 
+dat.pics<-subset(dat.pics, select=c(ld_snp, lead_snp, r2, top_PP_running, top_pics, dhs_all, dhs_Tcell_merged, mpra_sig))
+dat.pics$CS_80<-0 
+dat.pics$CS_90<-0 
+dat.pics$CS_95<-0 
+for(i in 1:nrow(dat.pics)){
+  top_pics<-max(subset(dat.pics, lead_snp==dat.pics[i,]$lead_snp)$top_pics)
+
+  if(dat.pics[i,]$top_pics==top_pics){
+    dat.pics[i,]$CS_80<-1
+    dat.pics[i,]$CS_90<-1 
+    dat.pics[i,]$CS_95<-1 
+  }else{
+    if(dat.pics[i,]$top_pics>=0.01){
+      if(dat.pics[i,]$top_PP_running<=0.8){
+        dat.pics[i,]$CS_80<-1
+      }    
+      if(dat.pics[i,]$top_PP_running<=0.9){
+        dat.pics[i,]$CS_90<-1 
+      }
+      if(dat.pics[i,]$top_PP_running<=0.95){
+        dat.pics[i,]$CS_95<-1 
+      }
+    }
+  }
+}
+
+
+
+dat.sens_spec<-data.frame(cs=rep(c(80,90,95)), disease="all", mpra=rep(c("mpra"), each=3), 
+                          a=0, b=0, c=0, d=0,sensitivity=0, specificity=0, stringsAsFactors = F)
+
+for(i in 1:nrow(dat.sens_spec)){
+  a<-0 # Instantiate variable for MPRA emVars that are in PICS credible set 
+  b<-0 #variable for MPRA emVars that are not PICS credible set 
+  c<-0 #variable for MPRA non-emVars that are in PICS credible set 
+  d<-0 #variable for MPRA non-emVars that are not PICS credible set 
+  a_list<-c()
+  b_list<-c()
+  c_list<-c()
+  d_list<-c()
+  for(l in unique(dat.pics$lead_snp)){ #Perform this calculation for each GWAS locus
+    temp.dat.pics<-subset(dat.pics, lead_snp==l) #Subset SNPs for that locus
+    total_list<-nrow(temp.dat.pics)
+    cs_list<-nrow(temp.dat.pics[temp.dat.pics[,paste0("CS_", dat.sens_spec[i,]$cs)]==1,])
+    non_cs_list<-nrow(temp.dat.pics[temp.dat.pics[,paste0("CS_", dat.sens_spec[i,]$cs)]==0,])
+    max_pics<-max(temp.dat.pics$top_pics)
+    if(max_pics>=0.05 & cs_list<=25 & total_list>=5 & total_list<100 & non_cs_list>0 ){
+      dat.cs<-temp.dat.pics[temp.dat.pics[,paste0("CS_", dat.sens_spec[i,]$cs)]==1,]
+      if(nrow(subset(dat.cs, mpra_sig=="Enhancer_Skew"))>0){
+        a<-a+1
+        a_list<-c(a_list, l)
+      }else{
+        c<-c+1
+        c_list<-c(c_list, l)
+      }
+      
+      dat.non_cs<-temp.dat.pics[temp.dat.pics[,paste0("CS_", dat.sens_spec[i,]$cs)]==0,]
+      if(nrow(subset(dat.non_cs, mpra_sig=="Enhancer_Skew"))>0){
+        b<-b+1
+        b_list<-c(b_list, l)
+      }else{
+        d<-d+1
+        d_list<-c(d_list, l)
+      }
+    }
+  }
+  dat.sens_spec[i,]$a<-a
+  dat.sens_spec[i,]$b<-b
+  dat.sens_spec[i,]$c<-c
+  dat.sens_spec[i,]$d<-d
+  dat.sens_spec[i,]$sensitivity<-a/(a+c) #Calculate sensitivity
+  dat.sens_spec[i,]$specificity<-d/(b+d) #Calculate specificity
+}
+
+write.table(dat.sens_spec, paste0(data.dir,"/",plots_id,"_dhsloci_",dhs_loci,"_","sensitivity_and_specificity"), row.names = F, col.names = T, sep="\t", quote=F)
+
+# Sensitivity and specificity of not precision and recall!
+# https://towardsdatascience.com/should-i-look-at-precision-recall-or-specificity-sensitivity-3946158aace1
+
 ```
 
 # Allelic Skew 

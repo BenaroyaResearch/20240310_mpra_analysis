@@ -51,6 +51,8 @@ mpra_subset$SNP19 <- mpra_subset$SNP
 
 # Adding hg38 column in the data
 mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt"
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data"
+plots_id <- "20240310_tcell_glm_mpra_merge_hg19"
 mpra38<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 mpra38 <- subset(mpra38,select=c(SNP19,SNP38))
 
@@ -151,6 +153,7 @@ write.table(dat.biobank, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/D
   dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
+  
    uk_biobank_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
     facet_grid(~mpra)+
@@ -211,10 +214,11 @@ dat.biobank<-subset(dat.biobank, lead_snp%in%emvar_lead_snps)
   dat.enrichment[i,]$p<-fisher.test(rbind(c(a,b), c(c, d)))$p.value #Calculate enrichment p-value
 }
   
-  
 # This code plots the fold enrichment values against the uk biobank threshold (which are the p-values (the higher the threshold value, the lower the p-value)).
   dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
+  
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table"), row.names = F, col.names = T, sep="\t", quote=F)   
   
   uk_biobank_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +

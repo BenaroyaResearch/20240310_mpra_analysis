@@ -6,6 +6,7 @@ date: "2024-04-15"
 ---
 
 This is a markdown in which we are going to take the eQTL finemapping from this paper (https://doi.org/10.1038/s41588-021-00924-w) and make enrichment plots based on them.
+https://github.com/eQTL-Catalogue/eQTL-Catalogue-resources/blob/master/tabix/tabix_ftp_paths.tsv 
 
 Name mpra and give directories for the mpra table and where the plots should go
 ```{r}
