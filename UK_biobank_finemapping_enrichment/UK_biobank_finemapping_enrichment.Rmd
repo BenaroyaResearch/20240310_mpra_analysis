@@ -108,7 +108,7 @@ bad_snps19<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
 dat.biobank<-mpra_biobank_merge_all_traits_plot
 
 
-write.table(dat.biobank, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","uk_biobank_top_pip_mpra_data"), row.names=FALSE,col.names=TRUE,sep="\t")
+write.table(dat.biobank, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","uk_biobank_top_pip_mpra_data.txt"), row.names=FALSE,col.names=TRUE,sep="\t")
 
 # Calculate MPRA/DHS enrichment in uk biobank fine-mapping.
 
@@ -218,7 +218,7 @@ dat.biobank<-subset(dat.biobank, lead_snp%in%emvar_lead_snps)
   dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
-write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table"), row.names = F, col.names = T, sep="\t", quote=F)   
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)   
   
   uk_biobank_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +

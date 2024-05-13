@@ -6,8 +6,12 @@ date: "2024-04-15"
 ---
 
 ```{r}
-# Import  MPRA.
-mpra <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20231115_Tcell_glm_replication/data/20231115_Tcell_emVar_glm_mpra_merge_john_filter_hg38.txt", sep="\t", header=T)
+# Import MPRA
+mpra <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt", sep="\t", header=T)
+mpra$rsid <- mpra$rsid_19
+mpra_coordinates <- subset(mpra, select=c(rsid,pos38,chr38,ref_allele,alt_allele,SNP38,SNP19))
+write.table(mpra_coordinates,"/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/mpra_coordinates_hg38_hg19.txt", row.names=F, col.names=T, sep="\t", quote=F)
+mpra_coordinates <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/mpra_coordinates_hg38_hg19.txt", sep="\t", header=T)
 ```
 
 
@@ -27,14 +31,15 @@ ananastra <- subset(ananastra,select=c(chromosome,position,ref,alt,rsid,transcri
 
 ananastra$transcription_factor <- sub("_HUMAN","",ananastra$transcription_factor)
 
-mpra_cordinates <- subset(mpra, select=c(rsid,pos,chr,ref_allele,alt_allele,SNP))
+mpra$rsid <- mpra$rsid_19
+mpra_coordinates <- subset(mpra, select=c(rsid,pos38,chr38,ref_allele,alt_allele,SNP38,SNP19))
 
-ananastra_mpra_table <- merge(mpra_cordinates,ananastra, by="rsid")
+ananastra_mpra_table <- merge(mpra_coordinates,ananastra, by="rsid")
 
 # Make sure position and alleles for ananastra and MPRA are the same 
 # Rename the columns 
 ananastra_mpra_table$ananastra_pos <- ananastra_mpra_table$position
-ananastra_mpra_table$mpra_pos <- ananastra_mpra_table$pos
+ananastra_mpra_table$mpra_pos <- ananastra_mpra_table$pos38
 # Create a column with a 1 when the ananastra and mpra positions match 
 ananastra_mpra_table$pos_agree <- NA
 ananastra_mpra_table$pos_agree <- as.integer(ananastra_mpra_table$ananastra_pos == ananastra_mpra_table$mpra_pos)
@@ -64,16 +69,14 @@ ananastra_mpra_table$ref_agree <- as.integer(ananastra_mpra_table$ananastra_ref 
 ananastra_mpra_table  <- subset(ananastra_mpra_table, ref_agree==1)
 # No variants lost
 
-ananastra.data.for.mpra <- subset(ananastra_mpra_table, select=c(SNP,transcription_factor))
+ananastra.data.for.mpra <- subset(ananastra_mpra_table, select=c(SNP19,transcription_factor))
 
 ananastra.data.for.mpra <- ananastra.data.for.mpra %>%
-  group_by(SNP) %>%
+  group_by(SNP19) %>%
   summarise(ananastra_tf = toString(transcription_factor)) %>%
   ungroup()
 
-mpra <- merge(mpra,ananastra.data.for.mpra, by="SNP",all.x=TRUE)
-
-# mpra$ananastra_tf
+write.table(ananastra.data.for.mpra,"/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/ananastra_data_for_mpra_hg19.txt", row.names=F, col.names=T, sep="\t", quote=F)
 ```
 
 Motifbreakr column for mpra
@@ -89,8 +92,8 @@ motif.dat$geneSymbol <- gsub("/","_",motif.dat$geneSymbol)
 # Subset the motif data
 motif.dat<-subset(motif.dat,  select=c(seqnames, end, REF, ALT,SNP_id, geneSymbol))
 # Subset MPRA
-mpra_subset <- subset(mpra, select=c(SNP,rsid,ref_allele,alt_allele))
-
+mpra_subset <- mpra_coordinates
+mpra_subset$SNP <- mpra_subset$SNP38
 ######## code for merging mpra and motifbreakr by chromosome and position ########
 # Get rid of the chr in motifbreakr SNP_id column to conform with mpra SNP column
 motif.dat$SNP <- gsub("chr","",motif.dat$SNP_id)
@@ -119,14 +122,14 @@ motif.mpra.dat$ref_agree <- as.integer(motif.mpra.dat$motifbreakr_ref == motif.m
 # Subset to only variants in which the reference allele in the MPRA and motifbreakr match
 motif.mpra.dat <- subset(motif.mpra.dat, ref_agree==1)
 
-motifbreakr.data.for.mpra <- subset(motif.mpra.dat, select=c(SNP,geneSymbol))
+motifbreakr.data.for.mpra <- subset(motif.mpra.dat, select=c(SNP19,geneSymbol))
 
 motifbreakr.data.for.mpra <- motifbreakr.data.for.mpra %>%
-  group_by(SNP) %>%
+  group_by(SNP=SNP19) %>%
   summarise(motifbreakr_tf_2024 = toString(geneSymbol)) %>%
   ungroup()
 
-mpra <- merge(mpra,motifbreakr.data.for.mpra, by="SNP",all.x=TRUE)
+write.table(motifbreakr.data.for.mpra,"/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/motifbreakr_data_for_mpra_hg19.txt", row.names=F, col.names=T, sep="\t", quote=F)
 ```
 
 

@@ -83,25 +83,27 @@ venn_diagram_plot
 
 # MPRA merge hg38
 ```{r mpra hg38}
-#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
-#mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
-# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
-#subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
-# plots.dir is the place where your plots are stored 
-#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
-# plots_id is the prefix to the plot. It should end with an underscore to look nice
-#plots_id <- "20240310_tcell_glm_hg38" 
-
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
 mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 # An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
-subtitle <- "unstim_jurkat glm 03/10/24"
+subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
 # plots.dir is the place where your plots are stored 
-plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
-# This is where the data is stored
-data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_unstim_jurkat_glm_hg38" 
+plots_id <- "20240310_tcell_glm_hg38" 
+cell_type <- "tcell"
+
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"
+#mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+#subtitle <- "unstim_jurkat glm 03/10/24"
+# plots.dir is the place where your plots are stored 
+#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
+# This is where the data is stored
+#data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+#plots_id <- "20240310_unstim_jurkat_glm_hg38" 
+#cell_type <- "jurkat"
 ```
 
 # Variant category table
@@ -117,14 +119,29 @@ df <- data.frame(cbind(
   gtable_compare <- gt(df, rownames_to_stub = TRUE)
   gtable_compare
   
-# How many active elements are there with out the FC filter?
+# How many active elements are there?
 # Create absolute value columns 
-mpra_merge$abs.A.log2FC <- abs(mpra_merge$A.log2FC)
-mpra_merge$abs.B.log2FC <- abs(mpra_merge$B.log2FC)
-nrow(subset(mpra_merge, (abs.A.log2FC>1 & A.logPadj_BF>2) | (abs.B.log2FC>1 & B.logPadj_BF>2)))
+mpra$abs.A.log2FC <- abs(mpra$A.log2FC)
+mpra$abs.B.log2FC <- abs(mpra$B.log2FC)
+# Total pCREs (including emVars) with activity filter 
+nrow(subset(mpra, ((abs.A.log2FC>1 & A.logPadj_BF>2) | (abs.B.log2FC>1 & B.logPadj_BF>2))))
+# Total pCREs (including emVars) without activity filter (active elements)
+nrow(subset(mpra, ((A.logPadj_BF>2) | (B.logPadj_BF>2))))
+
+# What was the maximum number of emvars linked to a single lead variant and what was the lead variant?
+emvars_only <- subset(mpra, mpra_sig=="Enhancer_Skew")
+lead.snp.dat <- data.frame(table(emvars_only$lead_snp))
+names(lead.snp.dat) <- c("lead_snp", "number_of_emVars")
+lead.snp.dat<-lead.snp.dat[order(-lead.snp.dat$number_of_emVars),]
+write.table(lead.snp.dat, paste0(data.dir,"/",plots_id,"_how_many_emvars_per_loci.txt"), row.names = F, col.names = T, sep="\t", quote=F) 
+
+# What was the maximum number of emvars linked to a single lead variant and what was the lead variant?
+
+lead.snp.dat.all <- data.frame(table(mpra$lead_snp))
+names(lead.snp.dat.all) <- c("lead_snp", "number_of_variants")
+lead.snp.dat.all<-lead.snp.dat.all[order(-lead.snp.dat.all$number_of_variants),]
+write.table(lead.snp.dat.all, paste0(data.dir,"/",plots_id,"_how_many_variants_per_loci_all_types.txt"), row.names = F, col.names = T, sep="\t", quote=F) 
 ```
-
-
 
 
 # Volcano plot
@@ -342,28 +359,33 @@ ggsave(plots_name,plot = p_value_rank_dhs_plot, path = plots.dir, width = 7, hei
 
 
 ```{r mpra hg19}
-#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
-#mpra_merge <-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra_merge <-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 
-#subtitle <- "Tcell glm 03/10/24 Primary Tcell filter hg19"
+subtitle <- "Tcell glm 03/10/24 Primary Tcell filter hg19"
 # plots.dir is the place where your plots are stored 
-#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
 # This is where the data is stored
-#data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data"
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-#plots_id <- "20240310_tcell_glm_hg19" 
+plots_id <- "20240310_tcell_glm_hg19" 
+cell_type <- "tcell"
 
-
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
-mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
+#mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 # An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
-subtitle <- "Unstim Jurkat glm 03/10/24"
+#subtitle <- "Unstim Jurkat glm 03/10/24"
 # plots.dir is the place where your plots are stored 
-plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
+#plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
 # This is where the data is stored
-data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
+#data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
-plots_id <- "20240310_unstim_jurkat_glm_hg19" 
+#plots_id <- "20240310_unstim_jurkat_glm_hg19" 
+#cell_type <- "jurkat"
+
+lead.snp.dat.all <- data.frame(table(mpra_merge$lead_snp))
+names(lead.snp.dat.all) <- c("lead_snp", "number_of_variants")
+lead.snp.dat.all<-lead.snp.dat.all[order(-lead.snp.dat.all$number_of_variants),]
 ```
 
 
@@ -386,7 +408,7 @@ mpra <- mpra_merge
   mpra.pics.plot$dhs_merged <- mpra.pics.plot$dhs_Tcell_merged
 
   
-  # Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region. These are hg19 SNPs
+  # Remove bad SNPs where it doesn't reach 5E-8 association p-value in the GWAS and remove MHC region. These are hg19 SNPs # Added the loci with 3000+ variants
   bad_snps<-c("22:50966914:T:C","3:105558837:G:A", "12:9905851:A:C",
             "13:40745693:G:A","16:1073552:A:G","17:38775150:C:T",
             "17:44073889:A:G","18:12830538:G:A","2:100764087:T:G",
@@ -460,7 +482,7 @@ mpra <- mpra_merge
   dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
-write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_all_loci_table"), row.names = F, col.names = T, sep="\t", quote=F)  
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_all_loci_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)  
   
    PICS_threshold_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
@@ -529,7 +551,7 @@ dat.pics<-subset(dat.pics, lead_snp%in%emvar_lead_snps)
   dat.enrichment$pics<-factor(dat.enrichment$pics, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pics%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
-write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_dhs_loci_only_table"), row.names = F, col.names = T, sep="\t", quote=F)
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_pics_enrichment_plot_dhs_loci_only_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)
   
   
   PICS_threshold_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pics)) + 
@@ -589,6 +611,7 @@ for(i in 1:nrow(dat.pics)){
   }
 }
 
+pics_cs_table <- dat.pics
 
 
 dat.sens_spec<-data.frame(cs=rep(c(80,90,95)), disease="all", mpra=rep(c("mpra"), each=3), 
@@ -884,7 +907,12 @@ print(mpra_skew_caqtl_skew_ggplot)
 ```{r deltasvm}
 mpra <- mpra_merge
 
-dat.deltasvm <- read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_naive_CD4_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+if(cell_type=="tcell"){
+  dat.deltasvm <- read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_naive_CD4_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+}
+if(cell_type=="jurkat"){
+  dat.deltasvm <- read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_Jurkat_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+}
 
 # format the input files
   # subset the mpra data
@@ -1175,6 +1203,8 @@ dat.enrichment$significant<-ifelse(dat.enrichment$p<(0.05/8), "*", "")
 
 ylimit <- max(dat.enrichment$fold) + 1
 
+write.table(dat.enrichment, paste0(data.dir,"/", plots_id, "_histone_cage_dhs_data.txt"), row.names=FALSE,col.names=TRUE,sep="\t", quote=FALSE)
+
 # Plot proportion of MPRA variants overlapping chromHMM, DHS, or CAGE
   histone_marks_plot <- ggplot(dat.enrichment, aes(fill=mode, y=fold, x=mark)) + 
   geom_bar(position="dodge", stat="identity", color="black")+
@@ -1226,7 +1256,7 @@ ylimit <- max(dat.enrichment$fold) + 1
 
 ylimit <- max(dat.enrichment$fold) + 5
   
-write.table(dat.enrichment, paste0(plots.dir,"/", plots_id, "_chrommhmm_histone_data.txt"), row.names=FALSE,col.names=TRUE,sep="\t")
+write.table(dat.enrichment, paste0(data.dir,"/", plots_id, "_chrommhmm_histone_data.txt"), row.names=FALSE,col.names=TRUE,sep="\t", quote=FALSE)
 
 # plot of enrichment of chromatin marks
 chromatin_marks_plot <- ggplot(dat.enrichment, aes(fill=mode, y=fold, x=chromhmm)) + 
@@ -1237,6 +1267,9 @@ chromatin_marks_plot <- ggplot(dat.enrichment, aes(fill=mode, y=fold, x=chromhmm
   geom_text(data=subset(dat.enrichment, fold>3) ,aes(label=signif(p,2), group=mode),position = position_dodge(width=0.9), vjust=-1.5)
 # + geom_text(aes(label=significant), position=position_dodge(width=0.9), vjust=-0.25)
 chromatin_marks_plot
+
+
+
   # creating the plot name from the plots_id
 plots_name1 <- paste0(plots_id,"_histone_marks",".pdf")
 # Saving the plot in the plots directory 

@@ -1,0 +1,229 @@
+---
+title: "20240310 mpra supplementary tables"
+output: html_document
+date: "2024-05-07"
+---
+
+Supplementary table list:
+1. Tcell MPRA results
+  - derived from OLJR.C_Tcell_emVAR_glm_20240310.out
+  - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results
+  - equivalent of mouri supp. table 3
+2. Jurkat MPRA results 
+  - derived from OLJR.A_Jurkat_emVAR_glm_20240310.out
+  - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results
+  - equivalent of mouri supp. table 3
+3. PICS enrichment all loci
+ - derived from 20240310_tcell_glm_hg19_mpra_pics_enrichment_plot_all_loci_table.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - equivalent of mouri supp. table 11
+4. PICS enrichment dhs loci
+ - derived from 20240310_tcell_glm_hg19_mpra_pics_enrichment_plot_dhs_loci_only_table.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - equivalent of mouri supp. table 12
+5. UK biobank enrichment dhs loci
+ - derived from 20240310_tcell_glm_mpra_merge_hg19_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data
+6. tcell motifbreakr mpra combined
+ - derived from motif.mpra.dat_tcell_hocomoco.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/motif.mpra.data
+ - equivalent of mouri supp. table 7
+7. tcell motifbreakr logskew ttest
+ - derived from t.test.all.bind.motif.dat_tcell_hocomoco.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/t.test.all.bind.motif.dat
+8. jurkat motifbreakr mpra combined
+ - derived from motif.mpra.dat_unstim_jurkat_hocomoco.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/motif.mpra.data
+ - equivalent of mouri supp. table 7
+9. jurkat motifbreakr logskew ttest
+ - derived from t.test.all.bind.motif.dat_unstim_jurkat_hocomoco.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/t.test.all.bind.motif.dat
+10. ChromHMM enrich
+ - derived from 20240310_tcell_glm_hg19_chrommhmm_histone_data.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - equivalent of mouri supp. table 4
+11. Histone CAGE DHS enr
+ - derived from 20240310_tcell_glm_hg19_histone_cage_dhs_data.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - equivalent of mouri supp. table 5
+12. MPRA functional annotations
+ - derived from 20240310_tcell_glm_mpra_merge_hg38_hg19.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - large subset needed
+ - equivalent of mouri supp. table 6
+13. PICS by MPRA
+ - derived from 20240310_tcell_glm_mpra_merge_hg38_hg19.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
+ - with extra columns needed from the pics plot (credible sets)
+ - equivalent of mouri supp. table 10
+
+
+## Table 1
+```{r}
+supp_table_1 <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+supp_table_1$human_genome_build <- "hg19"
+supp_table_1$project <- "TGWAS"
+supp_table_1 <- subset(supp_table_1, select=c(SNP,human_genome_build,project,window,strand,allele,haplotype,comb,A_Ctrl_Mean,A_Exp_Mean,A_log2FC, A_log2FC_SE, A_logP, A_logPadj_BH, A_logPadj_BF, B_Ctrl_Mean, B_Exp_Mean, B_log2FC, B_log2FC_SE, B_logP, B_logPadj_BH, B_logPadj_BF, Log2Skew,Skew_logFDR))
+supp_table_1
+# Add rsid
+```
+
+## Table 2
+```{r}
+supp_table_2 <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+supp_table_2$human_genome_build <- "hg19"
+supp_table_2$project <- "TGWAS"
+supp_table_2 <- subset(supp_table_2, select=c(SNP,human_genome_build,project,window,strand,allele,haplotype,comb,A_Ctrl_Mean,A_Exp_Mean,A_log2FC, A_log2FC_SE, A_logP, A_logPadj_BH, A_logPadj_BF, B_Ctrl_Mean, B_Exp_Mean, B_log2FC, B_log2FC_SE, B_logP, B_logPadj_BH, B_logPadj_BF, Log2Skew,Skew_logFDR))
+supp_table_2
+
+# read in one of the mouri et al. supplementary tables
+rsid.dat<-read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/Mouri_et_al_replication/MPRA_merge_creation/41588_2022_1056_MOESM4_ESM.xlsx")
+# renaming a column to merge it with the mpra data
+rsid.dat$SNP <- rsid.dat$ld_snp 
+# pick just the SNP and rsid column
+rsid.dat<-unique(subset(rsid.dat, select=c(SNP, rsid)))
+# merge the rsid data with the mpra
+mpra<-merge(mpra, rsid.dat, by="SNP", all.x=T, all.y=F)
+
+missing_rsid_snps <- subset(mpra, is.na(rsid)==TRUE)
+rsid_in_data <- missing_rsid_snps$ld_snp%in%rsid.dat$ld_snp
+# missing_rsid_snps$ld_snp
+
+# Add rsid
+
+
+```
+
+## Table 3
+```{r}
+supp_table_3 <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_pics_enrichment_plot_all_loci_table.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_3 <- subset(supp_table_3, select=c(pics,mpra,a,b,c,d,fold,p))
+names(supp_table_3) <- c("PICS threshold","mpra","MPRA+, PICS+","MPRA+, PICS-","MPRA-, PICS+","MPRA-, PICS-","Enrichment","P-value")
+supp_table_3
+```
+
+## Table 4 
+```{r}
+supp_table_4 <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_pics_enrichment_plot_dhs_loci_only_table.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_4 <- subset(supp_table_4, select=c(pics,mpra,a,b,c,d,fold,p))
+names(supp_table_4) <- c("PICS threshold","mpra","MPRA+, PICS+","MPRA+, PICS-","MPRA-, PICS+","MPRA-, PICS-","Enrichment","P-value")
+supp_table_4
+```
+
+## Table 5
+```{r}
+supp_table_5 <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/20240310_tcell_glm_mpra_merge_hg19_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_5 <- subset(supp_table_5, select=c(pip,mpra,a,b,c,d,fold,p))
+names(supp_table_5) <- c("UKBB PIP threshold","mpra","MPRA+, UKBB+","MPRA+, UKBB-","MPRA-, UKBB+","MPRA-, UKBB-","Enrichment","P-value")
+supp_table_5
+```
+
+## Table 6 
+```{r}
+supp_table_6 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/motif.mpra.data/motif.mpra.dat_tcell_hocomoco.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_6$SNP38 <- supp_table_6$SNP
+supp_table_6 <- subset(supp_table_6, select=c("SNP38","REF","ALT","rsid","mpra_sig","A.log2FC","B.log2FC","LogSkew","geneSymbol","scoreRef","scoreAlt","alleleDiff", "unique_snp_tf"))
+supp_table_6
+```
+
+
+## Table 7
+```{r}
+supp_table_7 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/t.test.all.bind.motif.dat/t.test.all.bind.motif.dat_tcell_hocomoco.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_7
+```
+
+## Table 8 
+```{r}
+supp_table_8 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/motif.mpra.data/motif.mpra.dat_unstim_jurkat_hocomoco.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_8
+supp_table_8$SNP38 <- supp_table_8$SNP
+supp_table_8 <- subset(supp_table_8, select=c("SNP38","REF","ALT","rsid","mpra_sig","A.log2FC","B.log2FC","LogSkew","geneSymbol","scoreRef","scoreAlt","alleleDiff", "unique_snp_tf"))
+supp_table_8
+```
+
+## table 9 
+```{r}
+supp_table_9 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/t.test.all.bind.motif.dat/t.test.all.bind.motif.dat_unstim_jurkat_hocomoco.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_9
+```
+
+## Table 10
+```{r}
+supp_table_10 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_chrommhmm_histone_data.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_10 <- subset(supp_table_10, select=c("chromhmm","mode","fold","p"))
+names(supp_table_10) <- c("chromHMM Annotation", "MPRA Effect", "Fold Enrichment","P-value")
+supp_table_10
+```
+
+## Table 11
+```{r}
+supp_table_11 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_histone_cage_dhs_data.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_11 <- subset(supp_table_11, select=c("mark","mode","fold","p"))
+names(supp_table_11) <- c("Annotation", "MPRA Effect", "Fold Enrichment","P-value")
+supp_table_11
+```
+
+## Table 12
+```{r}
+supp_table_12 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_12 <- subset(supp_table_12, select=c(SNP19,SNP38, rsid_19, mpra_sig,dhs_hTH1,	dhs_hTH17,	dhs_hTH2,	dhs_CD4,	dhs_CD4pos_N,	dhs_hTR,	dhs_Jurkat,	dhs_CD8,	dhs_Tcell_merged,	dhs_all,delta_svm_nCD4,	asc,	atac_qtl_beta,atac_qtl_pval,	eqtl_beta, eqtl_pval,	tf_motifbreakr, tss))
+supp_table_12 
+ # Rerun the mpra merge creation and add the columns that I created (ukbb, motifbreakr)
+```
+# Table 13
+```{r}
+supp_table_13 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_13 <- subset(supp_table_13, select=c(ld_snp19,lead_snp19,SNP19,r2_19,ld_snp38,lead_snp38,SNP38,r2_38,rsid_19, mpra_sig,Crohns_pval,	Crohns_pics,	MS_pval,	MS_pics,	Psoriasis_pval,	Psoriasis_pics,	RA_pval,	RA_pics,	T1D_pval,	T1D_pics,	UC_pval,	UC_pics,	IBD_pval,	IBD_pics))
+supp_table_13
+# ADD: top_pval	top_disease	top_pics	80% credible set	90% credible set	95% credible set
+```
+
+Create the excel workbook for all of the tables
+```{r}
+library(openxlsx)
+wb <- createWorkbook()
+
+# Table 1
+addWorksheet(wb, sheetName = "Tcell MPRA results")
+writeData(wb, sheet = "Tcell MPRA results", supp_table_1)
+# Table 2
+addWorksheet(wb, sheetName = "jurkat MPRA results")
+writeData(wb, sheet = "jurkat MPRA results", supp_table_2)
+# Table 3 
+addWorksheet(wb, sheetName = "PICS enr all loci")
+writeData(wb, sheet = "PICS enr all loci", supp_table_3)
+# Table 4
+addWorksheet(wb, sheetName = "PICS enr emVar loci")
+writeData(wb, sheet = "PICS enr emVar loci", supp_table_4)
+# Table 5 
+addWorksheet(wb, sheetName = "UKBB enr emVar loci")
+writeData(wb, sheet = "UKBB enr emVar loci", supp_table_5)
+# Table 6 
+addWorksheet(wb, sheetName = "Tcell motifbreakR results")
+writeData(wb, sheet = "Tcell motifbreakR results", supp_table_6)
+# Table 7
+addWorksheet(wb, sheetName = "Tcell motifbreakR ttest")
+writeData(wb, sheet = "Tcell motifbreakR ttest", supp_table_7)
+# Table 8 
+addWorksheet(wb, sheetName = "Jurkat motifbreakR results")
+writeData(wb, sheet = "Jurkat motifbreakR results", supp_table_8)
+# Table 9
+addWorksheet(wb, sheetName = "Jurkat motifbreakR ttest")
+writeData(wb, sheet = "Jurkat motifbreakR ttest", supp_table_9)
+# Table 10
+addWorksheet(wb, sheetName = "chromHMM enrich")
+writeData(wb, sheet = "chromHMM enrich", supp_table_10)
+# Table 11
+addWorksheet(wb, sheetName = "Histone CAGE DHS Enrichment")
+writeData(wb, sheet = "Histone CAGE DHS Enrichment", supp_table_11)
+# Table 12
+addWorksheet(wb, sheetName = "MPRA Functional Annotations")
+writeData(wb, sheet = "MPRA Functional Annotations", supp_table_12)
+# Table 13
+addWorksheet(wb, sheetName = "PICS by MPRA")
+writeData(wb, sheet = "PICS by MPRA", supp_table_13)
+
+saveWorkbook(wb, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/ho_et_al_big_table.xlsx")
+```
+

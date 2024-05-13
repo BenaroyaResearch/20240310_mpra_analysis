@@ -1,0 +1,107 @@
+---
+title: "MPRA emvar and pCRE cutoffs"
+output: html_document
+author: Max Dippel
+date: "2024-05-10"
+---
+
+
+```{r}
+tcell_mpra <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt", sep="\t", header=T)
+jurkat_mpra <- read.table(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"), sep="\t", header=T)
+```
+
+Creating classifying mpra varaints as emVars, pCREs and no activity variants. This is the unstimulated jurkat filter from Mouri et al. 2022
+```{r, eval=FALSE}
+mpra <- jurkat_mpra
+jurkat_emVar_cutoffs <- data.frame(adjP=c(0,0.5,1,2),emvars_BH=0,pcres_BH=0,emvars_BF=0,pcres_BF=0)
+
+
+for(e in 1:nrow(jurkat_emVar_cutoffs)){
+  # Manually temporarily set these FDRs and adjusted p-values that are NA to -1 for easier TRUE/FALSE testing. This is fine because p-values will never be -1.
+mpra$Skew.logFDR[is.na(mpra$Skew.logFDR)]<- (-1)
+mpra$A.logPadj_BH[is.na(mpra$A.logPadj_BH)]<- (-1)
+mpra$B.logPadj_BH[is.na(mpra$B.logPadj_BH)]<- (-1)
+
+#For each variant, assign whether it has no activity (nEnhancer_nSkew), is a pCRE only (Enhancer_nSkew) or emVAR (Enhancer_Skew). This is the original filter. The primary tcell filter will be assigned later.
+# First assign every variant the no activity marker
+mpra$mpra_sig<-"nEnhancer_nSkew"
+# This filter calculates the variant category filter. For every row in the mpra data, if the skew FDR and FC BH p-value for allele A or B is greater than 1, then assign the variant as an emvar. If the skew FDr is less than 1 and the FC BH p-value for allele A or B is greater than 1, then assign the variant as a pcre. 
+for(i in 1:nrow(mpra)){
+  if(mpra[i,]$Skew.logFDR>1 & (mpra[i,]$A.logPadj_BH>jurkat_emVar_cutoffs[e,1] |  mpra[i,]$B.logPadj_BH>jurkat_emVar_cutoffs[e,1]) ){
+    mpra[i,]$mpra_sig<-"Enhancer_Skew"
+  }else if(mpra[i,]$Skew.logFDR<=1 & (mpra[i,]$A.logPadj_BH>jurkat_emVar_cutoffs[e,1] |  mpra[i,]$B.logPadj_BH>jurkat_emVar_cutoffs[e,1]) ){
+    mpra[i,]$mpra_sig<-"Enhancer_nSkew"
+  }
+}
+
+#Set those -1 FDRs and p-values back to NA
+mpra$Skew.logFDR[mpra$Skew.logFDR<0]<- NA
+mpra$A.logPadj_BH[mpra$A.logPadj_BH<0]<- NA
+mpra$B.logPadj_BH[mpra$B.logPadj_BH<0]<- NA
+#
+
+jurkat_emVar_cutoffs[e,2]<- nrow(subset(mpra, mpra_sig=="Enhancer_Skew"))
+jurkat_emVar_cutoffs[e,3] <- nrow(subset(mpra, mpra_sig=="Enhancer_nSkew"))
+
+# Manually temporarily set these FDRs and adjusted p-values that are NA to -1 for easier TRUE/FALSE testing. This is fine because p-values will never be -1.
+mpra$Skew.logFDR[is.na(mpra$Skew.logFDR)]<- (-1)
+mpra$A.logPadj_BF[is.na(mpra$A.logPadj_BF)]<- (-1)
+mpra$B.logPadj_BF[is.na(mpra$B.logPadj_BF)]<- (-1)
+
+#For each variant, assign whether it has no activity (nEnhancer_nSkew), is a pCRE only (Enhancer_nSkew) or emVAR (Enhancer_Skew). This is the original filter. The primary tcell filter will be assigned later.
+# First assign every variant the no activity marker
+mpra$mpra_sig<-"nEnhancer_nSkew"
+# This filter calculates the variant category filter. For every row in the mpra data, if the skew FDR and FC BF p-value for allele A or B is greater than 1, then assign the variant as an emvar. If the skew FDr is less than 1 and the FC BF p-value for allele A or B is greater than 1, then assign the variant as a pcre. 
+for(i in 1:nrow(mpra)){
+  if(mpra[i,]$Skew.logFDR>1 & (mpra[i,]$A.logPadj_BF>jurkat_emVar_cutoffs[e,1] |  mpra[i,]$B.logPadj_BF>jurkat_emVar_cutoffs[e,1]) ){
+    mpra[i,]$mpra_sig<-"Enhancer_Skew"
+  }else if(mpra[i,]$Skew.logFDR<=1 & (mpra[i,]$A.logPadj_BF>jurkat_emVar_cutoffs[e,1] |  mpra[i,]$B.logPadj_BF>jurkat_emVar_cutoffs[e,1]) ){
+    mpra[i,]$mpra_sig<-"Enhancer_nSkew"
+  }
+}
+
+#Set those -1 FDRs and p-values back to NA
+mpra$Skew.logFDR[mpra$Skew.logFDR<0]<- NA
+mpra$A.logPadj_BF[mpra$A.logPadj_BF<0]<- NA
+mpra$B.logPadj_BF[mpra$B.logPadj_BF<0]<- NA
+#
+jurkat_emVar_cutoffs[e,4]<- nrow(subset(mpra, mpra_sig=="Enhancer_Skew"))
+jurkat_emVar_cutoffs[e,5] <- nrow(subset(mpra, mpra_sig=="Enhancer_nSkew"))
+}
+```
+
+This is John's code to check that the code selects variants that have a log2FC of enhancer activity > 1 for at least one allele per element.  It will create the mpra_sig column. There already is a column called mpra_sig and this should replace it. This uses the absolute value filter. If this filter is bad then I will have to rerun the correct code and all of the code after it. 
+```{r, eval=FALSE, warning=FALSE}
+mpra <- tcell_mpra
+tcell_emVar_cutoffs <- data.frame(adjP=c(0,0.5,1,2),emvars_BH=0,pcres_BH=0,emvars_BF=0,pcres_BF=0)
+
+for(e in 1:nrow(tcell_emVar_cutoffs)){
+# Create absolute value columns 
+mpra$abs.A.log2FC <- abs(mpra$A.log2FC)
+mpra$abs.B.log2FC <- abs(mpra$B.log2FC)
+
+# BH
+# Reset the mpra_sig column
+mpra$mpra_sig<- NA
+# For every row in the mpra, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele and the LogSkew FDR is above 1, then the variant is labeled as an emVar (Enhancer_Skew). Else, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele, then it is labeled as a pCRE (Enhancer_nSkew). If it is niether of those it is a no activity variant (nEnhancer_nSkew). 
+for(i in 1:nrow(mpra)){
+  mpra[i,]$mpra_sig<-ifelse(((mpra[i,]$abs.A.log2FC>1 & mpra[i,]$A.logPadj_BH>tcell_emVar_cutoffs[e,1]) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BH>tcell_emVar_cutoffs[e,1])) & mpra[i,]$Skew.logFDR>=1, "Enhancer_Skew", ifelse((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BH>tcell_emVar_cutoffs[e,1]) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BH>tcell_emVar_cutoffs[e,1]), "Enhancer_nSkew", "nEnhancer_nSkew"))
+}
+
+tcell_emVar_cutoffs[e,2]<- nrow(subset(mpra, mpra_sig=="Enhancer_Skew"))
+tcell_emVar_cutoffs[e,3] <- nrow(subset(mpra, mpra_sig=="Enhancer_nSkew"))
+
+# BF 
+# Reset the mpra_sig column
+mpra$mpra_sig<- NA
+# For every row in the mpra, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele and the LogSkew FDR is above 1, then the variant is labeled as an emVar (Enhancer_Skew). Else, if the absolute value of the fold change is above 1 and the BH p-vlaue is above 2 for either allele, then it is labeled as a pCRE (Enhancer_nSkew). If it is niether of those it is a no activity variant (nEnhancer_nSkew). 
+for(i in 1:nrow(mpra)){
+  mpra[i,]$mpra_sig<-ifelse(((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>tcell_emVar_cutoffs[e,1]) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>tcell_emVar_cutoffs[e,1])) & mpra[i,]$Skew.logFDR>=1, "Enhancer_Skew", ifelse((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>tcell_emVar_cutoffs[e,1]) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>tcell_emVar_cutoffs[e,1]), "Enhancer_nSkew", "nEnhancer_nSkew"))
+}
+
+tcell_emVar_cutoffs[e,4]<- nrow(subset(mpra, mpra_sig=="Enhancer_Skew"))
+tcell_emVar_cutoffs[e,5] <- nrow(subset(mpra, mpra_sig=="Enhancer_nSkew"))
+
+} # end of df loop
+```

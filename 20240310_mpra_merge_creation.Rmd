@@ -21,8 +21,9 @@ Hash and unhash the lines at 478 and 548 to prevent writing tables you do not wa
 Import MPRA, inspect data, and set directories
 ```{r, eval=FALSE}
 # Load the .out file I get from Jax which is just the MPRA data
-# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
-mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+#mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 head(mpra_out)
 # How many rows are in that file?
 nrow(mpra_out)
@@ -31,9 +32,9 @@ ncol(mpra_out)
 # What are the column names in the mpra?
 names(mpra_out)
 # Directory to put the mpra in (with cell type and glm or ttest and no slash at the end)
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/stim_jurkat/glm"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
 # Name of MPRA file (end with hg19 for this Rmd)
-mpra.name <- "20240310_stim_jurkat_glm_mpra_merge_hg19.txt"
+mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
 # This decides what option to choose for the variant category filter. There are currently two options "mouri" and "tcell
 filter <- "tcell"
 ```
@@ -418,67 +419,13 @@ for(i in 1:nrow(mpra)){
 nrow(mpra)
 ```
 
+
 Create an Ananastra column for MPRA
 ```{r}
-# Import the two ananastra datasets
-library(readr)
-ananastra1 <- readr::read_tsv("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/ananastra_list1.tsv")
-ananastra2 <- readr::read_tsv("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/ananastra_list2.tsv")
-# Join the two two ananastra data
-ananastra <- rbind(ananastra1,ananastra2)
-# 1433 rows
-ananastra$rsid <- ananastra$rs_id
-# Subset the ananastra columns
-ananastra <- subset(ananastra,select=c(chromosome,position,ref,alt,rsid,transcription_factor,finemapping))
-
-ananastra$transcription_factor <- sub("_HUMAN","",ananastra$transcription_factor)
-
-mpra_cordinates <- subset(mpra, select=c(rsid,pos,chr,ref_allele,alt_allele,SNP))
-
-ananastra_mpra_table <- merge(mpra_cordinates,ananastra, by="rsid")
-
-# Make sure position and alleles for ananastra and MPRA are the same 
-# Rename the columns 
-ananastra_mpra_table$ananastra_pos <- ananastra_mpra_table$position
-ananastra_mpra_table$mpra_pos <- ananastra_mpra_table$pos
-# Create a column with a 1 when the ananastra and mpra positions match 
-ananastra_mpra_table$pos_agree <- NA
-ananastra_mpra_table$pos_agree <- as.integer(ananastra_mpra_table$ananastra_pos == ananastra_mpra_table$mpra_pos)
-# Subset to only variants in which the position in the MPRA and ananastra match
-ananastra_mpra_table  <- subset(ananastra_mpra_table, pos_agree==1)
-# No variants lost
-
-# Make sure alternate alleles for Motifbreakr and MPRA are the same 
-# Rename the columns 
-ananastra_mpra_table$ananastra_alt <- ananastra_mpra_table$alt
-ananastra_mpra_table$mpra_alt <- ananastra_mpra_table$alt_allele
-# Create a column with a 1 when the ananastra and mpra alleles match 
-ananastra_mpra_table$alt_agree <- NA
-ananastra_mpra_table$alt_agree <- as.integer(ananastra_mpra_table$ananastra_alt == ananastra_mpra_table$mpra_alt)
-# Subset to only variants in which the alternate allele in the MPRA and ananastra match
-ananastra_mpra_table  <- subset(ananastra_mpra_table, alt_agree==1)
-# Lost 6 variants
-
-# Make sure reference alleles for Motifbreakr and MPRA are the same 
-# Rename the columns 
-ananastra_mpra_table$ananastra_ref <- ananastra_mpra_table$ref
-ananastra_mpra_table$mpra_ref <- ananastra_mpra_table$ref_allele
-# Create a column with a 1 when the ananastra and mpra alleles match 
-ananastra_mpra_table$ref_agree <- NA
-ananastra_mpra_table$ref_agree <- as.integer(ananastra_mpra_table$ananastra_ref == ananastra_mpra_table$mpra_ref)
-# Subset to only variants in which the reference allele in the MPRA and ananastra match
-ananastra_mpra_table  <- subset(ananastra_mpra_table, ref_agree==1)
-# No variants lost
-
-ananastra.data.for.mpra <- subset(ananastra_mpra_table, select=c(SNP,transcription_factor))
-
-ananastra.data.for.mpra <- ananastra.data.for.mpra %>%
-  group_by(SNP) %>%
-  summarise(ananastra_tf = toString(transcription_factor)) %>%
-  ungroup()
-
+ananastra.data.for.mpra <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/ananastra_data_for_mpra_hg19.txt", sep="\t", header=T)
+ananastra.data.for.mpra$SNP <- ananastra.data.for.mpra$SNP19
+ananastra.data.for.mpra <- subset(ananastra.data.for.mpra, select=-c(SNP19))
 mpra <- merge(mpra,ananastra.data.for.mpra, by="SNP",all.x=TRUE)
-
 ```
 
 ```{r}
@@ -487,53 +434,7 @@ nrow(mpra)
 
 Motifbreakr column for mpra based on my run of motifbreak r with hocomoco v. 11 and a lower p-value threshold
 ```{r}
-# Import motif data
-motif.dat <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/TF_analysis/motifbreakr/data/2023.11.15.hg38.tcells.glm.all.snps.hocomoco.bed.motifbreakr.results.txt", sep="\t", header=T)
-
-# Makes geneSymbol (TF name) all uppercase
-motif.dat$geneSymbol <- toupper(motif.dat$geneSymbol)
-# make geneSymbol (TF Name) change from slash / to underscore so that the plots can save
-motif.dat$geneSymbol <- gsub("/","_",motif.dat$geneSymbol)
-
-# Subset the motif data
-motif.dat<-subset(motif.dat,  select=c(seqnames, end, REF, ALT,SNP_id, geneSymbol))
-# Subset MPRA
-mpra_subset <- subset(mpra, select=c(SNP,rsid,ref_allele,alt_allele))
-
-######## code for merging mpra and motifbreakr by chromosome and position ########
-# Get rid of the chr in motifbreakr SNP_id column to conform with mpra SNP column
-motif.dat$SNP <- gsub("chr","",motif.dat$SNP_id)
-# Merge Motifbreakr and MPRA ( we expect a similar number to the 61570 that are in the motif.dat right now (example run not represenative of all runs))
-
-# Merge Motifbreakr and MPRA ( we expect a similar number to the 61570 that are in the motif.dat right now (example run not represenative of all runs))
-motif.mpra.dat<-merge(motif.dat, mpra_subset, by="SNP", all.x=T, all.y=F)
-
-# Make sure alleles for Motifbreakr and MPRA are the same 
-# Rename the columns 
-motif.mpra.dat$motifbreakr_alt <- motif.mpra.dat$ALT
-motif.mpra.dat$mpra_alt <- motif.mpra.dat$alt_allele
-# Create a column with a 1 when the motifbreakr and mpra alleles match (Improve this loop)
-motif.mpra.dat$alt_agree <- NA
-motif.mpra.dat$alt_agree <- as.integer(motif.mpra.dat$motifbreakr_alt == motif.mpra.dat$mpra_alt)
-# Subset to only variants in which the alternate allele in the MPRA and motifbreakr match
-motif.mpra.dat <- subset(motif.mpra.dat, alt_agree==1)
-
-# Make sure alleles for Motifbreakr and MPRA are the same 
-# Rename the columns 
-motif.mpra.dat$motifbreakr_ref <- motif.mpra.dat$REF
-motif.mpra.dat$mpra_ref <- motif.mpra.dat$ref_allele
-# Create a column with a 1 when the motifbreakr and mpra alleles match (Improve this loop)
-motif.mpra.dat$ref_agree <- NA
-motif.mpra.dat$ref_agree <- as.integer(motif.mpra.dat$motifbreakr_ref == motif.mpra.dat$mpra_ref)
-# Subset to only variants in which the reference allele in the MPRA and motifbreakr match
-motif.mpra.dat <- subset(motif.mpra.dat, ref_agree==1)
-
-motifbreakr.data.for.mpra <- subset(motif.mpra.dat, select=c(SNP,geneSymbol))
-
-motifbreakr.data.for.mpra.test <- motifbreakr.data.for.mpra %>%
-  group_by(SNP) %>%
-  summarise(motifbreakr_tf_2024 = toString(geneSymbol)) %>%
-  ungroup()
+motifbreakr.data.for.mpra <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/tf_columns_mpra_merge/motifbreakr_data_for_mpra_hg19.txt", sep="\t", header=T)
 
 mpra <- merge(mpra,motifbreakr.data.for.mpra, by="SNP",all.x=TRUE)
 ```
