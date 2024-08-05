@@ -18,11 +18,25 @@ OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
 
 Hash and unhash the lines at 478 and 548 to prevent writing tables you do not want
 
+# MPRA merge
+
+Load the packages
+```{r packages, message=FALSE}
+library(stringr)
+library(IRanges)
+library(data.table)
+library(readxl)
+require(biomaRt)
+library(GenomicRanges)
+```
+
+
+
 Import MPRA, inspect data, and set directories
-```{r, eval=FALSE}
+```{r}
 # Load the .out file I get from Jax which is just the MPRA data
-mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
-# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 #mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 head(mpra_out)
 # How many rows are in that file?
@@ -32,23 +46,26 @@ ncol(mpra_out)
 # What are the column names in the mpra?
 names(mpra_out)
 # Directory to put the mpra in (with cell type and glm or ttest and no slash at the end)
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
 # Name of MPRA file (end with hg19 for this Rmd)
-mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
-# This decides what option to choose for the variant category filter. There are currently two options "mouri" and "tcell
-filter <- "tcell"
+#mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
+# This decides what option to choose for the variant category filter. There are currently two options "original" and "expression"
+#filter <- "expression"
+filter <- "original"
 ```
 
 Filter for greater than 20 plasmids for both the A and B allele
 ```{r}
 nrow(mpra_out) # 18326 (tcell, unstim jurkat)
 mpra_out <- subset(mpra_out, A_Ctrl_Mean>=20 & B_Ctrl_Mean>=20)
-nrow(mpra_out) # 18182(tcell), 18070(unstim jurkat), 18227 (stim jurkat)
+nrow(mpra_out) # 18181(tcell)
 ```
 
 
 This code will make columns the same name as the analysis I'm about to run so things are not annoying.
-```{r, eval=FALSE}
+```{r}
 # Change the name of the columns to match the functions
 mpra_out$LogSkew <- mpra_out$Log2Skew
 # Change the name of the column to match the functions
@@ -80,24 +97,12 @@ mpra_out$ld_snp<-mpra_out$SNP
 mpra <- subset(mpra_out, select = -c(Log2Skew,A_Ctrl_Mean,A_Exp_Mean,A_log2FC,A_log2FC_SE,A_logP,A_logPadj_BH, A_logPadj_BF,B_Ctrl_Mean,B_Exp_Mean,B_log2FC,B_log2FC_SE,B_logP,B_logPadj_BH,B_logPadj_BF,Skew_logP,Skew_logFDR,Skew_logFDR_act))
 ```
 
-# MPRA merge
-
-Load the packages
-```{r packages, eval=FALSE, message=FALSE}
-library(stringr)
-library(IRanges)
-library(SummarizedExperiment)
-library(data.table)
-library(readxl)
-library(biomaRt)
-```
-
 ```{r}
 nrow(mpra)
 ```
 
 
-```{r ld data, eval=FALSE}
+```{r ld data}
 #Merge LD files across chromosomes
 # Create an empty data frame
 dat.ld.all<-data.frame(lead_snp=character(), ld_snp=character(), r2=numeric(), stringsAsFactors = F)
@@ -129,7 +134,7 @@ nrow(mpra)
 ```
 
 This big loop to integrate the PICS (probabilistics identification of causal snps) data into the mpra.merge data set 
-```{r PICS data, eval=FALSE}
+```{r PICS data}
 # Order of GWAS for plotting
 gwas.order<- c("Crohns","MS","Psoriasis", "RA","T1D","UC", "IBD") 
 # Merge in GWAS and PICS fine-mapping data
@@ -310,7 +315,7 @@ nrow(mpra)
 ```
 
 deltaSVM
-```{r, eval=FALSE}
+```{r}
 #Merge in deltaSVM
 # Load the Jurkat deltaSVM data
 dat.deltasvm<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_Jurkat_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
@@ -331,7 +336,7 @@ nrow(mpra)
 ```
 
 ASC 
-```{r, eval=FALSE}
+```{r}
 #Merge in ASC from Calderon
 #Read in allelic skew data from Calderon et al. (PMID: 31570894), Supplementary Table 10, "significant_ASCs" tab
 #asc_dir<-"/Users/michaelguo/Dropbox/JR_MPRA/asc/"
@@ -358,7 +363,7 @@ nrow(mpra)
 ```
 
 ATAC-QTL and eQTL (This chunk adds two extra rows wtf is going on)
-```{r, eval=FALSE}
+```{r}
 # Read in Gate ATAC-QTL data
 # Read in Gate et al ATAC-QTL data (PMID: 29988122), Supplemental Table 6
 # qtl_dir<-"/Users/michaelguo/Dropbox/JR_MPRA/qtl/"
@@ -398,7 +403,7 @@ nrow(mpra)
 ```
 
 MotifbreakR
-```{r motifbreakr, eval=FALSE}
+```{r motifbreakr}
 #Read in motifbreakr data
 dat.motifbreakr<-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/tf/motifbreakr/mpra.motifbreakr.method_log.p1e5.results.txt"),header=T, stringsAsFactors = F,sep="\t")
 # Create a SNP column from the SNP_id column in the motifbreakr data
@@ -444,7 +449,7 @@ nrow(mpra)
 ```
 
 Nearest TSS
-```{r genes from online, eval=FALSE}
+```{r genes from online}
 #Add in genes
 # Load the dataset. This takes a while. This dataset is in hg19
 dat.genes<-fread("ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz", header=F,data.table=F, skip=5)
@@ -491,7 +496,7 @@ nrow(mpra)
 ```
 
 This adds the rsID to the data set. 
-```{r, eval=FALSE}
+```{r}
 # read in one of the mouri et al. supplementary tables
 rsid.dat<-read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/Mouri_et_al_replication/MPRA_merge_creation/41588_2022_1056_MOESM4_ESM.xlsx")
 # renaming a column to merge it with the mpra data
@@ -511,37 +516,20 @@ nrow(mpra)
 ```
 
 Creating classifying mpra varaints as emVars, pCREs and no activity variants. This is the unstimulated jurkat filter from Mouri et al. 2022
-```{r, eval=FALSE}
-if(filter=="mouri"){
-#  
-# Manually temporarily set these FDRs and adjusted p-values that are NA to -1 for easier TRUE/FALSE testing. This is fine because p-values will never be -1.
-mpra$Skew.logFDR[is.na(mpra$Skew.logFDR)]<- (-1)
-mpra$A.logPadj_BH[is.na(mpra$A.logPadj_BH)]<- (-1)
-mpra$B.logPadj_BH[is.na(mpra$B.logPadj_BH)]<- (-1)
-
-#For each variant, assign whether it has no activity (nEnhancer_nSkew), is a pCRE only (Enhancer_nSkew) or emVAR (Enhancer_Skew). This is the original filter. The primary tcell filter will be assigned later.
-# First assign every variant the no activity marker
-mpra$mpra_sig<-"nEnhancer_nSkew"
-# This filter calculates the variant category filter. For every row in the mpra data, if the skew FDR and FC BH p-value for allele A or B is greater than 1, then assign the variant as an emvar. If the skew FDr is less than 1 and the FC BH p-value for allele A or B is greater than 1, then assign the variant as a pcre. 
+```{r}
+if(filter=="original"){
+mpra$mpra_sig<- NA
+# For every row in the mpra, if the BH p-vlaue is above 2 for either allele and the LogSkew FDR is above 1, then the variant is labeled as an emVar (Enhancer_Skew). Else, if the BH p-vlaue is above 2 for either allele, then it is labeled as a pCRE (Enhancer_nSkew). If it is neither of those it is a no activity variant (nEnhancer_nSkew). 
 for(i in 1:nrow(mpra)){
-  if(mpra[i,]$Skew.logFDR>1 & (mpra[i,]$A.logPadj_BH>1 |  mpra[i,]$B.logPadj_BH>1) ){
-    mpra[i,]$mpra_sig<-"Enhancer_Skew"
-  }else if(mpra[i,]$Skew.logFDR<=1 & (mpra[i,]$A.logPadj_BH>1 |  mpra[i,]$B.logPadj_BH>1) ){
-    mpra[i,]$mpra_sig<-"Enhancer_nSkew"
-  }
+  mpra[i,]$mpra_sig<-ifelse(((mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$B.logPadj_BF>2)) & mpra[i,]$Skew.logFDR>=1, "Enhancer_Skew", ifelse((mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$B.logPadj_BF>2), "Enhancer_nSkew", "nEnhancer_nSkew"))
 }
-
-#Set those -1 FDRs and p-values back to NA
-mpra$Skew.logFDR[mpra$Skew.logFDR<0]<- NA
-mpra$A.logPadj_BH[mpra$A.logPadj_BH<0]<- NA
-mpra$B.logPadj_BH[mpra$B.logPadj_BH<0]<- NA
-#
+# 
 }
 ```
 
 This is John's code to check that the code selects variants that have a log2FC of enhancer activity > 1 for at least one allele per element.  It will create the mpra_sig column. There already is a column called mpra_sig and this should replace it. This uses the absolute value filter. If this filter is bad then I will have to rerun the correct code and all of the code after it. 
-```{r, eval=FALSE, warning=FALSE}
-if(filter=="tcell"){
+```{r, warning=FALSE}
+if(filter=="expression"){
 #
 # Create absolute value columns 
 mpra$abs.A.log2FC <- abs(mpra$A.log2FC)
@@ -558,47 +546,60 @@ for(i in 1:nrow(mpra)){
 
 ```{r}
 nrow(mpra)
+emvars <- subset(mpra, mpra_sig == "Enhancer_Skew")
+nrow(emvars)
+emvars_in_dhs <- subset(mpra, mpra_sig == "Enhancer_Skew" & dhs_Tcell_merged==1)
+nrow(emvars_in_dhs)
+# Primary T cell emVars: 
+# Primary T cell emVars in DHS: 
 ```
 
 This will remove the bad SNPS 
 ```{r, eval=FALSE}
 nrow(mpra)
-# Eliminate this SNP because it had issue in the sequencing library. 
-bad_snp <- subset(mpra, rsid == "rs5855282")
-bad_snp$SNP
-mpra <- mpra[mpra$SNP != "3:189662658:GT:G",]
-nrow(mpra)
+
+# rs5855282 / 3:189662658:GT:G has been eliminated because it was not in the sequencing library. This is done in /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/20240310_eliminate_SNP.Rmd 
+
+# Filter out the SNPs with the missing rsids
 missing_rsid_snps <- subset(mpra, is.na(rsid)==TRUE)
 mpra$bad_snps <- mpra$ld_snp%in%missing_rsid_snps$ld_snp
-
-# bad_snps2 <- missing_rsid_snps$SNP
 mpra <- subset(mpra, bad_snps == FALSE)
 mpra <- subset(mpra, select=-c(bad_snps))
 nrow(mpra)
+emvars_in_dhs <- subset(mpra, mpra_sig == "Enhancer_Skew" & dhs_Tcell_merged==1)
+nrow(emvars_in_dhs)
+# Primary Tcell: 95 emvars in DHS with these SNPs filtered out + 
+# Unstimulated Jurkat: 39 emvars in DHS with these SNPs filtered out + 
+
+emvars_in_dhs <- subset(mpra, mpra_sig == "Enhancer_Skew" & dhs_Tcell_merged==1)
+nrow(emvars_in_dhs)
+# Primary Tcells: 99 emvars in DHS with these SNPs filtered out + plasmid counts filter
+# Primary Tcells: 89 emvars in DHS with these SNPs filtered out + first set of bad SNPs + plasmid counts filter
+
+# We are not removing the "bad SNPs" which don't reach 5E-8 association p-value in the GWAS and remove MHC region. 
 ```
 
-```{r}
-nrow(mpra)
-```
 
 Final checks before writing the mpra merge file 
-```{r}
+```{r, eval=FALSE}
 # names(mpra)
 subset_mpra <- subset(mpra, mpra_sig == "Enhancer_Skew")
 nrow(subset_mpra)
-# emVars 545 (tcell glm)  (547 before minimum plasmid cutoff)
-# emVars 218 (unstim_jurkat glm)
-# emVars 229 (stim_jurkat glm)
+# emVars (tcell glm): 545
+# emVars  (unstim_jurkat glm) 187
 subset_mpra2 <- subset(mpra, mpra_sig == "Enhancer_nSkew")
 nrow(subset_mpra2)
-# pCREs 1125 (tcell glm) (1128 before minimum plasmid cutoff)
-# pCREs 8982 (unstim_jurkat glm)
-# pCREs 225 (stim_jurkat glm)
+# pCREs (tcell glm): 1125
+# pCREs  (unstim_jurkat glm) 2728
 subset_mpra3 <- subset(mpra, mpra_sig == "nEnhancer_nSkew")
 nrow(subset_mpra3)
-# no activity 16471 (tcell glm) (16604 before minimum plasmid cutoff)
-# no activity 8829 (unstim_jurkat glm)
-# no activity 17732 (stim_jurkat glm)
+# no activity (tcell glm): 16471
+# no activity  (unstim_jurkat glm) 15114
+
+emvars_in_dhs <- subset(mpra, mpra_sig == "Enhancer_Skew" & dhs_Tcell_merged==1)
+nrow(emvars_in_dhs)
+# Primary tcell 95
+# unstim jurkat 39
 ```
 
 
@@ -608,14 +609,16 @@ write.table(mpra, paste0(mpra.dir,"/data/",mpra.name), row.names=F, col.names=T,
 ```
 
 Bring in the table again
-```{r}
+```{r,eval=FALSE}
 mpra <- read.table(paste0(mpra.dir,"/data/",mpra.name), sep="\t", header=T)
 ```
 
 Add top_pics and top_disease
-```{r}
+```{r, eval=FALSE}
 #For each MPRA variant, find the pics for all the diseases and make max_pics the maximum of all of those values
-mpra.pics <- subset(mpra, select=c(MS_pics,RA_pics,UC_pics,T1D_pics,IBD_pics,Crohns_pics,Psoriasis_pics))
+mpra.pics <- subset(mpra, select=c(MS_pics,RA_pics,UC_pics,T1D_pics,IBD_pics,Crohns_pics,Psoriasis_pics,RA_pval, MS_pval, UC_pval, T1D_pval, IBD_pval,Crohns_pval,Psoriasis_pval))
+
+mpra.pics <- subset(mpra.pics, RA_pval>=0 | MS_pval>=0 | UC_pval>=0 | T1D_pval>=0 | IBD_pval>=0 | Crohns_pval>=0 | Psoriasis_pval>=0)
 
 # Make the NAs for pics -1
 mpra.pics$MS_pics[is.na(mpra.pics$MS_pics)]<- (-1)
@@ -626,32 +629,40 @@ mpra.pics$T1D_pics[is.na(mpra.pics$T1D_pics)]<- (-1)
 mpra.pics$Crohns_pics[is.na(mpra.pics$Crohns_pics)]<- (-1)
 mpra.pics$Psoriasis_pics[is.na(mpra.pics$Psoriasis_pics)]<- (-1)
 colnames(mpra.pics)
-mpra.pics$win_pics <- colnames(mpra.pics)[apply(mpra.pics,1,which.max)] # Make a column that is called win_pics which will give me the name of the pics column with the best 
+mpra.pics$win_pics <- colnames(mpra.pics)[apply(mpra.pics[,1:7],1,which.max)] # Make a column that is called win_pics which will give me the name of the pics column with the best 
 
 mpra.pics$max_pics <- NA # This creates a column full of NAs for the loop to fill
 
 for(i in 1:nrow(mpra.pics)){
-  if(mpra.pics[i,]$win_pics=="MS_pics"){
+  if(mpra.pics[i,]$win_pics=="MS_pics" & mpra.pics[i,]$MS_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$MS_pics
-  } # if win_pics says MS_pics then the max_pics is MS_pics
-  if(mpra.pics[i,]$win_pics=="RA_pics"){
+  } # if win_pics says MS_pics and MS_pval>=8 then the max_pics is MS_pics
+  if(mpra.pics[i,]$win_pics=="RA_pics" & mpra.pics[i,]$RA_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$RA_pics
   } # if win_pics says RA_pics then the max_pics is RA_pics
-  if(mpra.pics[i,]$win_pics=="UC_pics"){
+  if(mpra.pics[i,]$win_pics=="UC_pics" & mpra.pics[i,]$UC_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$UC_pics
   } # if win_pics says UC_pics then the max_pics is UC_pics
-  if(mpra.pics[i,]$win_pics=="IBD_pics"){
+  if(mpra.pics[i,]$win_pics=="IBD_pics" & mpra.pics[i,]$IBD_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$IBD_pics
   } # if win_pics says IBD_pics then the max_pics is IBD_pics
-  if(mpra.pics[i,]$win_pics=="Crohns_pics"){
+  if(mpra.pics[i,]$win_pics=="Crohns_pics" & mpra.pics[i,]$Crohns_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$Crohns_pics
   } # if win_pics says Crohns_pics then the max_pics is Crohns_pics
-  if(mpra.pics[i,]$win_pics=="Psoriasis_pics"){
+  if(mpra.pics[i,]$win_pics=="Psoriasis_pics" & mpra.pics[i,]$Psoriasis_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$Psoriasis_pics
   } # if win_pics says Psoriasis_pics then the max_pics is Psoriasis_pics
-   if(mpra.pics[i,]$win_pics=="T1D_pics"){
+   if(mpra.pics[i,]$win_pics=="T1D_pics" & mpra.pics[i,]$T1D_pval>=8){
     mpra.pics[i,]$max_pics<-mpra.pics[i,]$T1D_pics
   } # if win_pics says T1D_pics then the max_pics is T1D_pics
+  
+  # if(mpra.pics[i,]$win_pics=="MS_pics" & mpra.pics[i,]$MS_pval<=8){
+  #  mpra.pics[i,]$win_pics<-NA
+  #} # if win_pics says MS_pics and MS_pval<=8 then the win_pics is back to NA
+  # if(mpra.pics[i,]$win_pics=="RA_pics" & mpra.pics[i,]$RA_pval<=8){
+  #  mpra.pics[i,]$win_pics<-NA
+  #} # if win_pics says RA_pics and RA_pval<=8 then the win_pics is back to NA
+  
 }
 
 # Make the MPRA pics columns which are NA return to NA
@@ -663,11 +674,11 @@ mpra.pics$T1D_pics[mpra.pics$T1D_pics<0]<- NA
 mpra.pics$Crohns_pics[mpra.pics$Crohns_pics<0]<- NA
 mpra.pics$Psoriasis_pics[mpra.pics$Psoriasis_pics<0]<- NA
 
+mpra.pics$top_disease <- str_extract(mpra.pics$win_pics, "[^_]+")
 ```
 
 Putting the max_pics and win_pics back into mpra
-```{r}
-mpra.pics$top_disease <- str_extract(mpra.pics$win_pics, "[^_]+")
+```{r, eval=FALSE}
 mpra$top_disease <- mpra.pics$top_disease 
 mpra$top_pics <- mpra.pics$max_pics
 ```
@@ -682,12 +693,17 @@ write.table(mpra, (paste0(mpra.dir,"/data/",mpra.name)), row.names=F, col.names=
 ```
 
 Bring in the table again
-```{r}
+```{r, eval=FALSE}
 mpra <- read.table(paste0(mpra.dir,"/data/",mpra.name), sep="\t", header=T)
 ```
 
+
+
+
+
+
 MPRA merge checks for DHS
-```{r}
+```{r, eval=FALSE}
 original_mpra <-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2020_mouri_public_data_replication/data/mpra_data_merge.txt", header=T, stringsAsFactors = F, sep="\t")
 original_mpra_dhs <- subset(original_mpra, select=c(SNP,dhs_CD4,dhs_Jurkat,dhs_CD8,dhs_Tcell_merged,dhs_all))
 mpratest <- subset(mpra, select=c(SNP,dhs_CD4,dhs_Jurkat,dhs_CD8,dhs_Tcell_merged,dhs_all))
@@ -708,7 +724,7 @@ class(dhs_merged$dhs_CD4.y)
 
 
 Find the extra variants in the MPRA which are in the big oligos table (mouri supp 2) but not in the mpra variants table (Mouri supp 1)
-```{r}
+```{r, eval=FALSE}
 # Collection of SNPs in MPRA
 set1 <- paste(mpra$SNP)
 # Selection of SNPs in the merged MPRA
@@ -726,8 +742,6 @@ mpra$SNP%in%mpra_out$SNP
 xtra <- mpra$SNP[duplicated(mpra$SNP)]
 extra_snps <- nrow(subset(mpra, is.na(SNP)==TRUE))
 ```
-
-
 
 
 

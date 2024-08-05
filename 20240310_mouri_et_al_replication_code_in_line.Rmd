@@ -10,10 +10,10 @@ library(readxl)
 library(data.table)
 library(stringr)
 library(IRanges)
-library(SummarizedExperiment)
+#library(SummarizedExperiment)
 library(ggplot2)
 library(pheatmap)
-library(ChIPseeker)
+#library(ChIPseeker)
 # library(clusterProfiler)
 library(reshape2)
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
@@ -80,7 +80,6 @@ venn_diagram_plot
   ggsave(plots_name,plot = venn_diagram_plot, path = plots.dir)
 ```
 
-
 # MPRA merge hg38
 ```{r mpra hg38}
 mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"
@@ -89,19 +88,20 @@ mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="
 subtitle <- "Tcell glm 03/10/24 Primary Tcell filter"
 # plots.dir is the place where your plots are stored 
 plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/plots"
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data"
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
 plots_id <- "20240310_tcell_glm_hg38" 
 cell_type <- "tcell"
 
 #mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"
 #mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
-# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+    # An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
 #subtitle <- "unstim_jurkat glm 03/10/24"
-# plots.dir is the place where your plots are stored 
+    # plots.dir is the place where your plots are stored 
 #plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
-# This is where the data is stored
+    # This is where the data is stored
 #data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
-# plots_id is the prefix to the plot. It should end with an underscore to look nice
+    # plots_id is the prefix to the plot. It should end with an underscore to look nice
 #plots_id <- "20240310_unstim_jurkat_glm_hg38" 
 #cell_type <- "jurkat"
 ```
@@ -133,7 +133,7 @@ emvars_only <- subset(mpra, mpra_sig=="Enhancer_Skew")
 lead.snp.dat <- data.frame(table(emvars_only$lead_snp))
 names(lead.snp.dat) <- c("lead_snp", "number_of_emVars")
 lead.snp.dat<-lead.snp.dat[order(-lead.snp.dat$number_of_emVars),]
-write.table(lead.snp.dat, paste0(data.dir,"/",plots_id,"_how_many_emvars_per_loci.txt"), row.names = F, col.names = T, sep="\t", quote=F) 
+# write.table(lead.snp.dat, paste0(data.dir,"/",plots_id,"_how_many_emvars_per_loci.txt"), row.names = F, col.names = T, sep="\t", quote=F) 
 
 # What was the maximum number of emvars linked to a single lead variant and what was the lead variant?
 
@@ -373,13 +373,13 @@ cell_type <- "tcell"
 
 #mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
 #mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
-# An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+    # An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
 #subtitle <- "Unstim Jurkat glm 03/10/24"
-# plots.dir is the place where your plots are stored 
+    # plots.dir is the place where your plots are stored 
 #plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/plots"
-# This is where the data is stored
+    # This is where the data is stored
 #data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data"
-# plots_id is the prefix to the plot. It should end with an underscore to look nice
+    # plots_id is the prefix to the plot. It should end with an underscore to look nice
 #plots_id <- "20240310_unstim_jurkat_glm_hg19" 
 #cell_type <- "jurkat"
 
@@ -670,7 +670,7 @@ write.table(dat.sens_spec, paste0(data.dir,"/",plots_id,"_dhsloci_",dhs_loci,"_"
 # Allelic Skew 
 ```{r allelic skew}
 mpra <- mpra_merge
-
+# This is 
 dat.skew <-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/asc/41588_2019_505_MOESM3_ESM.xlsx", sheet=10), stringsAsFactors = F)
 
 dat.skew<-dat.skew[!grepl("\\-U", dat.skew$cell_type),] # if analyzing stimulated cells remove unstimulated cell types
@@ -979,6 +979,10 @@ MPRA_SNP_per_Locus_plot
 ggplot_table <-  data.frame(table1)
 ggplot_mpra_snp_per_locus_plot <- ggplot(data=ggplot_table, aes(x=Freq)) + geom_histogram(fill="#5D93CD") + theme_bw() + labs(title="Histogram of # of MPRA SNPs per locus",subtitle=subtitle,x="# of MPRA SNPs",y="# of Loci")
 ggplot_mpra_snp_per_locus_plot
+
+# What percent of loci have only 1 emVar (of loci with emVars)?
+nrow(subset(ggplot_table, Freq==1))/nrow(ggplot_table)
+# 0.5361702
   
 # creating the plot name from the plots_id
 plots_name <- paste0(plots_id,"_mpra_snps_per_locus_histogram",".pdf")
@@ -1319,9 +1323,9 @@ return(dat.results)
 # mpra (must have these columns: chr, snp_start, snp_end, SNP, mpra_sig, LogSkew) 
 mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
 # motifbreakr.bed.dir 
-motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr.bed"
+motifbreakr.bed.dir <- paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_hg19_mpra_motifbreakr.bed")
 # motifbreakr.results.dir
-motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr_results.txt"
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_hg19_mpra_motifbreakr_results.txt"
 
 mpra_motifbreakr1(mpra=mpra, motifbreakr.bed.dir=motifbreakr.bed.dir,motifbreakr.results.dir=motifbreakr.results.dir)
 ```
@@ -1331,9 +1335,9 @@ mpra_motifbreakr1(mpra=mpra, motifbreakr.bed.dir=motifbreakr.bed.dir,motifbreakr
 # dat.tf (Read in TF ChIP binding sites from ENCODE)
 dat.tf<-fread("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz")
 # Where would you like the motifbreakr bed file to be located and what would you like it to be called? Please end file name in .bed 
-motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr.bed"
+motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_hg19_mpra_motifbreakr.bed"
 # # Where would you like the motifbreakr results file to be located and what would you like it to be called? Please end file name in .txt
-motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_hg19_mpra_motifbreakr_results.txt"
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_hg19_mpra_motifbreakr_results.txt"
 
 #####Evaluate overlap of MPRA variants with motifbreakR#######
 

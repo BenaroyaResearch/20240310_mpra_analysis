@@ -13,9 +13,9 @@ library(ggvenn)
 Insert MPRA directory here
 ```{r}
 #mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
-# mpra.name <- "20240310_tcell_glm_mpra_merge"
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/stim_jurkat/glm"
-mpra.name <- "20240310_stim_jurkat_glm_mpra_merge"
+#mpra.name <- "20240310_tcell_glm_mpra_merge"
+ mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
+ mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge"
 mpra.path <- paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt")
 ```
 
@@ -28,17 +28,6 @@ nrow(mpra)
 ```
 
 ## 1. Put hg38 names into table
-
-Compare John and Mike's version of the hg38 liftover table
-```{r}
-#hg38_liftover <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/mpra_snps.hg38_liftover.txt", sep="", header=T)
-#hg38_conversion <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/231011_Mouri_hg19_to_hg38_conversion.txt", sep="\t", header=T)
-#hg38_liftover$hg19_ld_snp <- hg38_liftover$snpid_hg19
-#liftover_merge <- merge(hg38_liftover,hg38_conversion, by="hg19_ld_snp")
-#liftover_merge$agree<- liftover_merge$hg38_pos%in%liftover_merge$pos_hg38
-#disagree <- subset(liftover_merge, agree==FALSE)
-# Differences : 11:118545772:TC:T,17:34839662:C:CG
-```
 
 This is the hg19 and hg38 data. We need to put this data into MPRA merge. Make the snpid_hg38 by combining different parts of the exisitng columns
 ```{r}
@@ -59,7 +48,6 @@ colnames(hg38_liftover) <- c("chr38","pos38","SNP19","SNP38")
 
 SNP19 and SNP38 must be in the same format for the merge to work
 
-
 Loading the MPRA
 ```{r}
 # Load MPRA data (change data set by pasting different directory)
@@ -72,20 +60,8 @@ mpra$SNP19 <- mpra$SNP
 
 Merge 38 SNP into mpra
 ```{r}
-# Merge MPRA with the 
+# Merge MPRA
 new_mpra <- merge(mpra, hg38_liftover, by="SNP19")
-# Collection of SNPs in MPRA
-set1 <- paste(mpra$SNP)
-# Selection of SNPs in the merged MPRA
-set2 <- paste(new_mpra$SNP)
-# Create a venn diagram of the two SNP list to see which SNPs don't overlap
-library(ggvenn)
-B <-list("mpra"=set1, "new_mpra"=set2)
-names(B) <- c("mpra"," mpra merged with SNP38")
-venn_diagram_plot <- ggvenn(B, set_name_size = 5, fill_color = c("springgreen2","forestgreen"),show_elements = TRUE, label_sep = "\n") + 
-  ggtitle("mpra vs. mpra merged with SNP38") +
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"))
-venn_diagram_plot
 ```
 
 We now need to change lead_snp, ld_snp, start_snp, end_snp
@@ -99,12 +75,11 @@ new_mpra$snp_start19 <- new_mpra$snp_start
 new_mpra$snp_end19 <- new_mpra$snp_end
 new_mpra$ID19 <- new_mpra$ID
 
+
 new_mpra <-  subset(new_mpra, select = -c(snp_end,snp_start,lead_snp,ld_snp,ID,chr,SNP,pos,comb))
 
 mpra <- new_mpra
 ```
-
-
 
 This is John's conversion data which has SNP 38 lead_snp, ld_snp
 First we need to make sure that this and the previous 
@@ -137,7 +112,7 @@ names(hg38_conversion) <- c("chr19", "pos19", "rsid_38", "ref_38", "alt_38", "ld
 
 
 ```{r}
-hg38_conversion <- subset(hg38_conversion, select = -c(chr19,lead_snp19,ld_snp19,pos38))
+hg38_conversion <- subset(hg38_conversion, select = -c(chr19,lead_snp19,ld_snp19,pos38,rsid_38,r2_38))
 
 # Merge MPRA and conversion table
 mpra <- merge(mpra, hg38_conversion, by="SNP19")
@@ -148,8 +123,6 @@ mpra <- mpra[!duplicated(mpra$SNP19), ]
 # Now we need to get the names in the new merged correct MPRA correct
 # names(mpra)
 
-mpra$r2_19 <- mpra$r2
-mpra$rsid_19 <- mpra$rsid
 mpra$ID38 <- paste0(mpra$SNP38,":R:wC")
 mpra$comb38 <- paste0(mpra$SNP38, "_center_fwd_ref")
 
@@ -159,7 +132,6 @@ mpra$snp_start38<-as.numeric(str_split_fixed(mpra$SNP38, "\\:", 4)[,2])-1-abs(nc
 mpra$snp_end38<-as.numeric(str_split_fixed(mpra$SNP38, "\\:", 4)[,2])
 # names(mpra)
 
-mpra <- subset(mpra, select = -c(r2,rsid))
 names(mpra)
 ```
 
@@ -170,10 +142,8 @@ write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38_hg19.txt"), row.name
 
 Creating a permanent hg38 without special column names
 ```{r}
-mpra <- subset(mpra, select = -c(r2_19,rsid_19,SNP19,lead_snp19,ld_snp19,snp_start19,snp_end19,pos19,chr19,ID19,ref_allele,alt_allele))
+mpra <- subset(mpra, select = -c(SNP19,lead_snp19,ld_snp19,snp_start19,snp_end19,pos19,chr19,ID19,ref_allele,alt_allele))
 
-mpra$r2 <- mpra$r2_38
-mpra$rsid <- mpra$rsid_38
 mpra$SNP <- mpra$SNP38
 mpra$ld_snp <- mpra$ld_snp38
 mpra$lead_snp <- mpra$lead_snp38
@@ -187,12 +157,12 @@ mpra$comb <- mpra$comb38
 mpra$snp_start <- mpra$snp_start38
 mpra$snp_end <- mpra$snp_end38
 
-mpra <- subset(mpra, select = -c(r2_38,rsid_38,SNP38,lead_snp38,ld_snp38,pos38,chr38,ID38,ref_38,alt_38,comb38,snp_start38,snp_end38))
+mpra <- subset(mpra, select = -c(SNP38,lead_snp38,ld_snp38,pos38,chr38,ID38,ref_38,alt_38,comb38,snp_start38,snp_end38))
 
 names(mpra)
 # May need to add or subtract 2 depending on the amount of columns in the table
-# mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
-mpra <- mpra[,c(72,76,75,77,78,79:82,73,74,1:71)]
+ mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
+#mpra <- mpra[,c(76,80,79,81,82,83:86,77,78,1:75)]
 names(mpra)
 ```
 
@@ -202,21 +172,30 @@ write.table(mpra, paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), row.names=F, 
 mpra_hg38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
 ```
 
-#################
 
-END OF NORMAL SCRIPT
-
-#################
-
-Check on the variants that didn't agree between John and Mike's liftover (11:118545772:TC:T,17:34839662:C:CG)
+Final check of rows and columns
 ```{r}
-mpra38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
-disagree_var1 <- subset(mpra38, SNP=="11:118675063:TC:T")
-disagree_var1
-disagree_var2 <- subset(mpra38, SNP=="17:36483817:C:CG")
-disagree_var2
-```
+hg19 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt"), sep="\t", header=T)
+hg38 <- read.table(paste0(mpra.dir,"/data/",mpra.name,"_hg38.txt"), sep="\t", header=T)
+nrow(hg19)
+ncol(hg19)
+nrow(hg38)
+ncol(hg38)
+set1 <- names(hg19)
+set2 <- names(hg38)
 
+head(hg19$SNP)
+head(hg38$SNP)
+
+# Create a venn diagram of the two SNP list to see which SNPs don't overlap
+library(ggvenn)
+B <-list("hg19"=set1, "hg38"=set2)
+names(B) <- c("hg19","hg38")
+venn_diagram_plot <- ggvenn(B, set_name_size = 5, fill_color = c("firebrick2","goldenrod1"),show_elements = TRUE, label_sep = "\n") + 
+  ggtitle("hg19 vs. hg38") +
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"))
+venn_diagram_plot
+```
 
 
 

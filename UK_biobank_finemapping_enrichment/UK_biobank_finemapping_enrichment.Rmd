@@ -77,12 +77,48 @@ mpra_biobank_merge <- merge(mpra_subset, biobank_data_subset, by="SNP", all.x = 
 mpra_biobank_merge
 ```
 
+Create a table with MPRA variants and all of the ukbb data for the paper
+```{r}
+# Set up the table
+biobank_table <- subset(biobank, method=="SUSIE")
+biobank_table$chromosome <- sub("chr","",biobank_table$chromosome)
+biobank_table$variant <- sub("chr","",biobank_table$variant)
+biobank_table <- subset(biobank_table, select=-c(rsid))
+# Merge by variant
+biobank_table$SNP <- biobank_table$variant
+
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# Subset the mpra
+mpra_table <-subset(mpra, select=c(SNP ,chr, snp_end, ld_snp, lead_snp, r2, rsid, mpra_sig))
+mpra_table$SNP19 <- mpra_table$SNP
+
+# Adding hg38 column in the data
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38_hg19.txt"
+data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data"
+plots_id <- "20240310_tcell_glm_mpra_merge_hg19"
+mpra38<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+mpra38 <- subset(mpra38,select=c(SNP19,SNP38))
+
+mpra_table <- merge(mpra_table,mpra38,by="SNP19")
+
+mpra_biobank_table <- merge(mpra_table, biobank_table, by="SNP", all.x = TRUE)
+mpra_biobank_table
+
+write.table(mpra_biobank_table, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","uk_biobank_mpra_supplementary_table.txt"), row.names=FALSE,col.names=TRUE,sep="\t")
+
+```
+
+
+
 For a single trait, I will create an enrichment test with emvars and pips, then subset by that trait. For the plot with all the traits I will create the plot
 ```{r}
 mpra_biobank_merge_all_traits <- mpra_biobank_merge
 # Order the rows by pics prob
 mpra_biobank_merge_all_traits <- mpra_biobank_merge_all_traits[order(-mpra_biobank_merge_all_traits$pip),]
 mpra_biobank_merge_all_traits <- mpra_biobank_merge_all_traits [!duplicated(mpra_biobank_merge_all_traits [,"SNP"]),]
+
+write.table(mpra_biobank_merge_all_traits, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","mpra_biobank_merge_all_traits",".txt"), row.names=FALSE,col.names=TRUE,sep="\t")
 ```
 
 ```{r}
@@ -153,6 +189,7 @@ write.table(dat.biobank, paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/D
   dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_all_loci_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)   
   
    uk_biobank_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
@@ -218,7 +255,7 @@ dat.biobank<-subset(dat.biobank, lead_snp%in%emvar_lead_snps)
   dat.enrichment$pip<-factor(dat.enrichment$pip, levels=c(0.01, 0.05, 0.1,0.15,0.2, 0.25,0.3,0.4,0.5,0.6,0.7,0.8))
   dat.enrichment<-subset(dat.enrichment, pip%in%c(0.01,0.05, 0.1,0.2, 0.3,0.4,0.5,0.6,0.7,0.8 ))
   
-write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_dhs_loci_only_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)   
+write.table(dat.enrichment, paste0(data.dir,"/",plots_id,"_mpra_uk_biobank_enrichment_plot_emvars_loci_only_table.txt"), row.names = F, col.names = T, sep="\t", quote=F)   
   
   uk_biobank_emvars_loci_plot <-  ggplot(dat.enrichment, aes( y=fold, x=pip)) + 
     geom_bar(position="dodge", stat="identity", color="black",aes(fill=-log10(p))) +  scale_fill_gradient(low= "lightgray",high="#E14A4A",limits = c(0, max(-log10(dat.enrichment$p)))) +
@@ -258,7 +295,7 @@ trait_list <- na.omit(unique(mpra_biobank_merge$trait))
   
   # uk.biobank.heatmap.long.form.data <- data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2),times=82),trait=rep(trait_list,each=5),enrichment=0,p=0)
   uk.biobank.heatmap.long.form.data <- NULL
-  uk.biobank.heatmap.long.form.data <- data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2),times=82),trait=rep(trait_list,each=5))
+  uk.biobank.heatmap.long.form.data <- data.frame(pip=rep(c(0.01, 0.05, 0.1,0.15,0.2),times=80),trait=rep(trait_list,each=5))
   
   all_results <- list()
   

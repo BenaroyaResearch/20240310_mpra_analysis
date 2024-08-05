@@ -1,0 +1,49 @@
+
+
+This is the code to eliminate the SNP in the .out files that is not even in the sequencing library
+
+The .out files were located in this directory /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results
+
+I have eliminated the SNP 3:189662658:GT:G (hg19) aka. rs5855282 from these files: 
+
+OLJR.C_Tcell_emVAR_glm_20240310.out
+OLJR.A_Jurkat_emVAR_glm_20240310.out
+OLJR.B_GM12878_emVAR_glm_20240310.out
+OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out
+
+This SNP is not in the sequencing library and should not be in this analysis. 
+
+
+
+```{r}
+table1 <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out", sep="\t", header=T)
+
+table1 <- table1[table1$SNP != "3:189662658:GT:G",]
+
+write.table(table1, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out", row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+```{r}
+table2 <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out", sep="\t", header=T)
+
+table2 <- table2[table2$SNP != "3:189662658:GT:G",]
+
+write.table(table2, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out", row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+```{r}
+table3 <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.B_GM12878_emVAR_glm_20240310.out", sep="\t", header=T)
+
+table3 <- table3[table3$SNP != "3:189662658:GT:G",]
+
+write.table(table3, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.B_GM12878_emVAR_glm_20240310.out", row.names=F, col.names=T, sep="\t", quote=F)
+```
+
+```{r}
+table4 <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out", sep="\t", header=T)
+
+table4 <- table4[table4$SNP != "3:189662658:GT:G",]
+
+write.table(table4, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out", row.names=F, col.names=T, sep="\t", quote=F)
+```
+

@@ -14,3 +14,8 @@ UK_biobank_finemapping_enrichment/release1.1/
 UK_biobank_finemapping_enrichment/plots/
 20240310_mouri_et_al_replication_code_in_line_files/
 old_code/
+GCST90296630.tsv
+emvars_in_dhs_check/
+pics_enrich_plot_p_value.html
+pics_enrich_plot_p_value.Rmd
+20240310_filtered_mpra_merge_creation.Rmd

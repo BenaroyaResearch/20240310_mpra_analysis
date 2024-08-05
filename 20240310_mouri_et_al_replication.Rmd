@@ -1,0 +1,261 @@
+---
+title: "20240310 mouri et al. replication"
+output: html_document
+date: "2024-03-10"
+---
+
+Load the packages
+```{r}
+library(readxl)
+library(data.table)
+library(stringr)
+library(IRanges)
+library(SummarizedExperiment)
+library(ggplot2)
+library(pheatmap)
+library(ChIPseeker)
+# library(clusterProfiler)
+library(reshape2)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(RColorBrewer)
+library(ggrepel)
+library(R.utils)
+library(pegas)
+library(gt)
+```
+
+The first input will be the MPRA merge file
+```{r}
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg19.txt"
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+x <- subset(mpra,SNP=="1:101240470:G:GTA")
+x <- subset(mpra,SNP=="1:101262041:TA:T")
+x <- subset(mpra,SNP=="1:101275781:TTATC:T")
+x
+x$snp_start
+x$rsid
+```
+
+```{r}
+mpra<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+df <- data.frame(cbind(
+  c(nrow(subset(mpra, mpra_sig == "Enhancer_Skew")),
+    nrow(subset(mpra, mpra_sig == "Enhancer_nSkew")),
+    nrow(subset(mpra, mpra_sig == "nEnhancer_nSkew")))),
+  row.names = c("emVars","pCREs only","No Activity"))
+# Give the data frame the proper headings
+  colnames(df) <- c("Tcell MPRA")
+  gtable_compare <- gt(df, rownames_to_stub = TRUE)
+  gtable_compare
+```
+
+An input in every function is going to be a subtitle which appears on all of the graphs to indicate which analysis you are preforming. This subtitle is a description in quotes and here we make it an object so we can put it in all of the plots. There will also be inputs for the plots directory and the plots identifier. 
+```{r}
+subtitle <- "Tcell glm 11/15/23 Primary Tcell filter"
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20231115_Tcell_glm_replication/plots"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "231115_Tcell_glm_Tcell_filter" 
+```
+
+## Allelic Skew
+```{r}
+dat.skew_file<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/asc/41588_2019_505_MOESM3_ESM.xlsx", sheet=10), stringsAsFactors = F)
+
+mpra_allelic_skew(mpra=mpra, dat.skew=dat.skew_file, stimulation="S", subtitle=subtitle, plots.dir=plots.dir, plots_id=plots_id)
+```
+
+## Volcano plots
+```{r}
+# Error in if (abs(mpra[i, ]$A.log2FC) > abs(mpra[i, ]$B.log2FC)) { : missing value where TRUE/FALSE needed
+
+# Fixed by this:
+mpra2 <- mpra
+mpra2$A.log2FC[is.na(mpra2$A.log2FC)]<- (0)
+mpra2$B.log2FC[is.na(mpra2$B.log2FC)]<- (0)
+mpra2$A.logPadj_BH[is.na(mpra2$A.logPadj_BH)]<- (0)
+mpra2$B.logPadj_BH[is.na(mpra2$B.logPadj_BH)]<- (0)
+mpra2$A.logPadj_BF[is.na(mpra2$A.logPadj_BF)]<- (0)
+mpra2$B.logPadj_BF[is.na(mpra2$B.logPadj_BF)]<- (0)      
+
+mpra_volcano_plots(mpra2, subtitle, plots.dir, plots_id)
+```
+
+## TSS
+```{r}
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+
+mpra_tss(mpra=mpra_merge,txdb=txdb, subtitle=subtitle, plots.dir=plots.dir, plots_id=plots_id)
+```
+
+## caQTL
+```{r}
+# 1. merge mpra data (must have chr, snp_start, snp_end, LogSkew, mpra_sig columns)
+
+# 2. dat.qtl (From Gate et al ATAC-QTL data (PMID: 29988122), Supplemental Table 6)
+dat.qtl_test <-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/qtl/41588_2018_156_MOESM8_ESM.xlsx", sheet=2), stringsAsFactors = F)
+
+# 3. subtitle 
+# 4. plots.dir
+# 5. plots_id
+
+mpra_caqtl(mpra_merge,dat.qtl_test, subtitle, plots.dir, plots_id)
+```
+
+## deltaSVM
+```{r}
+# 1. merge mpra data (must have chr, snp_start, snp_end, SNP, mpra_sig, LogSkew columns)
+
+# 2. dat.deltasvm
+# This is for primary t-cells
+cd4 <- read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_naive_CD4_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+# This is for jurkat cells
+jurkat <-read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/delta_svm/mpra_snps_E2_Jurkat_deltaSVM.txt"), header=F, stringsAsFactors = F, sep="\t")
+
+# 3. subtitle 
+# 4. plots.dir
+# 5. plots_id
+
+mpra_deltasvm(mpra_merge, cd4, subtitle, plots.dir, plots_id)
+```
+
+## dhs overlap
+Instructions from the R file:
+Download DHS data from https://zenodo.org/record/3838751#.X69tfEJKg6U
+DHS_Index_and_Vocabulary_hg19_WM20190703.txt.gz
+DHS_Index_and_Vocabulary_metadata.tsv
+dat_bin_FDR01_hg19.txt.gz
+```{r}
+# 1. merge mpra data (must have chr, snp_start, snp_end, mpra_sig columns)
+
+# 2. dhs.pos 
+dhs.pos_test<- read.delim(paste0("/nfs/jray/screens/Mouri_et_al_MPRA/dhs/DHS_Index_and_Vocabulary_hg19_WM20190703.txt"), header=T, stringsAsFactors = F)
+
+# 3. sample.dat
+sample.dat_test <-read.delim("/nfs/jray/screens/Mouri_et_al_MPRA/dhs/DHS_Index_and_Vocabulary_metadata.tsv", sep="\t", header=T, stringsAsFactors = F)
+
+# 4. dhs.dat (steps before loading the data included)
+  # Importing the DHS peak matrix into R and selecting only the overlapping data. This file will take an insane amount of      time to load. After we have made the file smaller, I created a new file with that smaller table that we can load into R. 
+  # Read in DHS peak matrix
+  # dhs.dat<-read.table("/nfs/jray/screens/Mouri_et_al_MPRA/dhs/dat_bin_FDR01_hg19.txt")
+  # Subset DHS peak matrix for only peaks that overlap with MPRA
+  # dhs.dat<-dhs.dat[overlap_index,] #Subset DHS matrix file by index of overlapping peaks
+  # dhs.dat<-cbind(dhs.pos[,c(1:3)],dhs.dat)
+  # write.table(dhs.dat,  "dhs_overlap_data.txt", sep="\t", quote=F, row.names = F)
+dhs.dat_test <- read.table("/nfs/jray/screens/Mouri_et_al_MPRA/Mouri_et_al_replication/dhs_overlap_data.txt", sep="\t", header=T)
+
+# 5. yaxislimit (I have often changed the yaxis limit on this plot)
+yaxislimit_test <- 5.0
+
+# 6. subtitle 
+# 7. plots.dir
+# 8. plots_id
+
+
+
+mpra_dhs_overlap(mpra, dhs.pos_test, sample.dat_test, dhs.dat_test, subtitle, plots.dir, plots_id)
+```
+
+## gwas loci counts
+```{r}
+# 1. merge mpra data (must have chr, snp_end,ld_snp, mpra_sig columns)
+
+# 2. mpra.chr.dir (the directory of the mpra.chr files which are created through plink the end must be "mpra.chr")
+mpra.chr.dir_test <- "/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/annotate_mpra/ld/ld/mpra.chr"
+
+# 3. subtitle
+# 4. plots.dir
+# 5. plots_id
+
+mpra_gwas_loci_counts(mpra_merge,mpra.chr.dir_test, subtitle, plots.dir, plots_id)
+```
+
+## gwas loci dhs
+```{r}
+# 1. merge mpra data
+
+# 2. dat.alleles
+#This file contains one row for each emVar
+#"risk_allele" column shows whether the ref (A) or alt (B) allele is the risk allele
+#Remaining columns show for each disease, whether the alt (B) allele increases or decreases risk for that disease. If not associated, then it's NA
+dat.alleles_test<-data.frame(read_excel(paste0( "/nfs/jray/screens/Mouri_et_al_MPRA/gwas_loci/mpra_allele_annotation.xlsx"), sheet=1), stringsAsFactors = F)
+
+# 3. a y axis limit for labeling the variants with numbers
+textylimit_test <- 5
+
+# 4. subtitle
+# 5. plots.dir
+# 6. plots_id
+mpra_gwas_loci_dhs(mpra_merge, dat.alleles_test, textylimit_test , subtitle, plots.dir, plots_id)
+```
+## Histone chromhmm
+```{r}
+# 1. merge mpra data (must have chr, snp_start, snp_end, ID, snp_sig and dhs_Tcell_merged columns)
+
+# 2. manifest.histone (manifest file containing file paths to ENCODE histone ChIP bed files for T cells)
+manifest.histone<-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/histone/histone_manifest.xlsx", sheet=1), stringsAsFactors = F)
+
+# 3. cage
+# I cannot download into R directly from the internet so I am going to download from the browser and upload to the server
+# cage<-data.frame(fread("https://fantom.gsc.riken.jp/5/datafiles/latest/extra/Enhancers/human_permissive_enhancers_phase_1_and_2.bed.gz")) #read in CAGE data from FANTOM consortium
+# Importing the data into R from the file which is now on the computer
+cage<-data.frame(fread("/nfs/jray/screens/Mouri_et_al_MPRA/mhguo1-T_cell_MPRA-5c36361/histone/human_permissive_enhancers_phase_1_and_2.bed.gz"))
+
+# 4. chromHMM file from ENCODE.
+chromhmm<-fread("https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/ChmmModels/core_K27ac/jointModel/final/E034_18_core_K27ac_dense.bed.gz", data.table = F, stringsAsFactors = F, header=F)
+
+# 5. subtitle 
+# 6. plots.dir
+# 7. plots_id
+
+mpra_histone_chromhmm(mpra_merge, manifest.histone, cage, chromhmm,  subtitle, plots.dir, plots_id)
+```
+
+## PICS analysis
+
+
+```{r}
+mpra_pics(mpra, emvars_or_not, subtitle, plots.dir, plots_id)
+```
+
+```{r}
+# 1. The mpra merge file (must have these columns: chr, snp_start, snp_end, SNP, mpra_sig, LogSkew)
+mpra.dir <- ""
+mpra_merge_file<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# 2. motifbreakr.bed.dir 
+motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/08252023_Stimulated_Jurkat_John_motifbreakr.bed"
+# 3. motifbreakr.results.dir
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/08252023_Stimulated_Jurkat_John_motifbreakr_results.txt"
+
+mpra_motifbreakr1(mpra_merge_file, motifbreakr.bed.dir,motifbreakr.results.dir)
+```
+
+```{r}
+# 1. The mpra merge file (must have these columns: chr, snp_start, snp_end, SNP, mpra_sig, LogSkew)
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/0230825_jurkat_stimulated_emVAR_glm_merge.txt"
+mpra_merge_file<-read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
+# 2. motifbreakr.results.dir
+motifbreakr.results.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/08252023_Stimulated_Jurkat_John_motifbreakr_results.txt"
+# 3. dat.tf (Read in TF ChIP binding sites from ENCODE)
+dat.tf<-fread("https://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeRegTfbsClustered/wgEncodeRegTfbsClusteredV3.bed.gz")
+# 4. motifbreakr.bed.dir 
+motifbreakr.bed.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/08252023_Stimulated_Jurkat_John_motifbreakr.bed"
+# 5. mpra.dir
+mpra.dir <-  "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20230825_stimulated_jurkat_glm_replication/john_filter/data/0230825_jurkat_stimulated_emVAR_glm_merge.txt"
+
+subtitle <- "Stimulated Jurkat glm 8/25/23 John's filter"
+
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/Mouri_et_al_MPRA/Mouri_et_al_replication/Mouri_replication_rmds/2020_unstimulated_jurkat_ttest_replication/Mouri_Guo_filter/plots"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "08252023_Stimulated_Jurkat_John_" 
+
+mpra_motifbreakr2(mpra=mpra_merge_file,motifbreakr.results.dir=motifbreakr.results.dir,dat.tf=dat.tf, motifbreakr.bed.dir=motifbreakr.bed.dir, mpra.dir=mpra.dir, subtitle=subtitle, plots.dir, plots_id)
+```
+
+
+
+
+
+
+
