@@ -8,14 +8,15 @@ The goal of this mark down is to create a better mpra merge file. This file will
 
 ```{r}
 library(ggvenn)
+library(stringr)
 ```
 
 Insert MPRA directory here
 ```{r}
-#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
-#mpra.name <- "20240310_tcell_glm_mpra_merge"
- mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
- mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+mpra.name <- "20240310_tcell_glm_mpra_merge"
+# mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
+# mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge"
 mpra.path <- paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt")
 ```
 

@@ -13,10 +13,12 @@ library(IRanges)
 #library(SummarizedExperiment)
 library(ggplot2)
 library(pheatmap)
-#library(ChIPseeker)
-# library(clusterProfiler)
+library(ChIPseeker)
+library(clusterProfiler)
 library(reshape2)
-library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(filelock)
+#library(GenomicFeatures)
+#library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 library(RColorBrewer)
 library(ggrepel)
 library(R.utils)
@@ -59,6 +61,7 @@ df <- data.frame(cbind(
 # Give the data frame the proper headings
   colnames(df) <- c(mpra1_name,mpra2_name)
   gtable_compare <- gt(df, rownames_to_stub = TRUE)
+  gtable_compare
   
 set1 <- subset(mpra1, mpra_sig == "Enhancer_Skew", select=c(SNP))
 set1 <- paste(set1$SNP)
@@ -75,10 +78,64 @@ venn_diagram_plot <- ggvenn(B, set_name_size = 3, fill_color = c(color1,color2))
 venn_diagram_plot 
 
 # creating the plot name from the plots_id
-  plots_name <- paste0(plots_id,"emvars_ven_diagram",".png")
+  plots_name <- paste0(plots_id,"emvars_ven_diagram",".pdf")
 # Saving the plot in the plots directory 
   ggsave(plots_name,plot = venn_diagram_plot, path = plots.dir)
+  
+# Hypergeometric statistical test for overlap 
+  # https://zhouhufeng.wordpress.com/2014/04/21/statistically-test-of-venn-diagram/
+  # Hypergeometric test for how many variants were expected vs. observed to overlap between jurkat and primary t cell MPRA emVars
+  tcell_emvars <- subset(mpra1, select=c(SNP,mpra_sig))
+  names(tcell_emvars) <- c("SNP","tcell_sig")
+  jurkat_emvars <- subset(mpra2, select=c(SNP,mpra_sig))         
+  names(jurkat_emvars) <- c("SNP","jurkat_sig")
+  hyper.test.dat <- merge(tcell_emvars,jurkat_emvars, by="SNP")
+  q <- nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew" & jurkat_sig=="Enhancer_Skew"))
+  m <- nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew"))
+  n <- nrow(hyper.test.dat) - nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew"))
+  k <- nrow(subset(hyper.test.dat, jurkat_sig=="Enhancer_Skew"))
+  phyper(q,m,n,k, lower.tail = FALSE, log.p = FALSE)
 ```
+
+Allelic Bias scatter plot
+```{r}
+# Load the MPRAs
+tcell<-read.delim(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data/20240310_tcell_glm_mpra_merge_hg38.txt"), header=T, stringsAsFactors = F, sep="\t")
+tcell$skew <- ifelse(tcell$mpra_sig == "Enhancer_Skew", "emVar", "no_skew")
+tcell <- subset(tcell, select=c(SNP,LogSkew,Skew.logFDR,skew))
+names(tcell) <- c("SNP","tcell_LogSkew","tcell_Skew.logFDR","tcell_skew")
+jurkat<-read.delim(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"), header=T, stringsAsFactors = F, sep="\t")
+jurkat$skew <- ifelse(jurkat$mpra_sig == "Enhancer_Skew", "emVar", "no_skew")
+jurkat <- subset(jurkat, select=c(SNP,LogSkew,Skew.logFDR,skew))
+names(jurkat) <- c("SNP","jurkat_LogSkew","jurkat_Skew.logFDR","jurkat_skew")
+# Merge the MPRAs
+double_mpra_scatter <- merge(tcell, jurkat, by="SNP")
+
+# Allelic Bias plot
+Allelic_bias_scatter_plot <- ggplot(data=double_mpra_scatter, aes(x=tcell_LogSkew, y=jurkat_LogSkew))+
+  geom_point(data=subset(double_mpra_scatter, jurkat_skew!="emVar" & tcell_skew!="emVar"),color="gray90",size=2) + 
+  geom_point(data=subset(double_mpra_scatter, jurkat_skew=="emVar"),color="#5D93CD",size=2) + 
+  geom_point(data=subset(double_mpra_scatter, tcell_skew=="emVar"),color="#E14A4A",size=2) + 
+  geom_point(data=subset(double_mpra_scatter, tcell_skew=="emVar" & jurkat_skew=="emVar"),color="#e14ae1",size=2) + 
+  labs(title ="Unstimulated Jurkat and Primary Tcell MPRA allelic Bias Comparsion", x ="Primary Tcell Allelic Bias", y = "Jurkat Allelic Bias") +
+  theme_bw() 
+Allelic_bias_scatter_plot
+
+# plots.dir is the place where your plots are stored 
+plots.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/plots"
+# plots_id is the prefix to the plot. It should end with an underscore to look nice
+plots_id <- "20240310_mpra_compare_" 
+# creating the plot name from the plots_id
+plots_name <- paste0(plots_id,"_allelic_bias_scatter_plot",".pdf")
+# Saving the plot in the plots directory 
+ggsave(plots_name,plot = Allelic_bias_scatter_plot, path = plots.dir, width = 12, height = 8)
+
+
+cor.test(x=double_mpra_scatter$tcell_LogSkew,y=double_mpra_scatter$jurkat_LogSkew, alternative = c("two.sided"), method = c("pearson"), conf.level = 0.95)
+```
+
+
+
 
 # MPRA merge hg38
 ```{r mpra hg38}

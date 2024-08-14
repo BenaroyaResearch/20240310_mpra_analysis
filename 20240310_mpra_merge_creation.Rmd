@@ -35,9 +35,8 @@ library(GenomicRanges)
 Import MPRA, inspect data, and set directories
 ```{r}
 # Load the .out file I get from Jax which is just the MPRA data
-# mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
-mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
-#mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.D_Jurkat.Stim_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.C_Tcell_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
+#mpra_out<-read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Primary_Data/20240310_analysis/results/OLJR.A_Jurkat_emVAR_glm_20240310.out",header=T, stringsAsFactors = F,sep="\t")
 head(mpra_out)
 # How many rows are in that file?
 nrow(mpra_out)
@@ -46,14 +45,14 @@ ncol(mpra_out)
 # What are the column names in the mpra?
 names(mpra_out)
 # Directory to put the mpra in (with cell type and glm or ttest and no slash at the end)
-#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
 # Name of MPRA file (end with hg19 for this Rmd)
-#mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
-mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
+mpra.name <- "20240310_tcell_glm_mpra_merge_hg19.txt"
+#mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
 # This decides what option to choose for the variant category filter. There are currently two options "original" and "expression"
-#filter <- "expression"
-filter <- "original"
+filter <- "expression"
+#filter <- "original"
 ```
 
 Filter for greater than 20 plasmids for both the A and B allele
@@ -541,7 +540,9 @@ for(i in 1:nrow(mpra)){
   mpra[i,]$mpra_sig<-ifelse(((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>2)) & mpra[i,]$Skew.logFDR>=1, "Enhancer_Skew", ifelse((mpra[i,]$abs.A.log2FC>1 &mpra[i,]$A.logPadj_BF>2) | (mpra[i,]$abs.B.log2FC>1 & mpra[i,]$B.logPadj_BF>2), "Enhancer_nSkew", "nEnhancer_nSkew"))
 }
 # 
+mpra<- subset(mpra, select=-c(abs.A.log2FC,abs.B.log2FC))
 }
+
 ```
 
 ```{r}
@@ -618,70 +619,37 @@ Add top_pics and top_disease
 #For each MPRA variant, find the pics for all the diseases and make max_pics the maximum of all of those values
 mpra.pics <- subset(mpra, select=c(MS_pics,RA_pics,UC_pics,T1D_pics,IBD_pics,Crohns_pics,Psoriasis_pics,RA_pval, MS_pval, UC_pval, T1D_pval, IBD_pval,Crohns_pval,Psoriasis_pval))
 
-mpra.pics <- subset(mpra.pics, RA_pval>=0 | MS_pval>=0 | UC_pval>=0 | T1D_pval>=0 | IBD_pval>=0 | Crohns_pval>=0 | Psoriasis_pval>=0)
+# For each mpra variant, find the disease with the strongest association and its associated PICS data
+  mpra.pics$top_pval<-NA #Top GWAS p-value for the MPRA variant
+  mpra.pics$top_disease<-NA #Disease corresponding to top GWAS p-value
+  mpra.pics$top_PP_running<-NA #Cumulative sum of posterior probabilities for that variant
+  mpra.pics$top_pics<-NA #PICS probability for that variant in the top GWAS
 
-# Make the NAs for pics -1
-mpra.pics$MS_pics[is.na(mpra.pics$MS_pics)]<- (-1)
-mpra.pics$RA_pics[is.na(mpra.pics$RA_pics)]<- (-1)
-mpra.pics$UC_pics[is.na(mpra.pics$UC_pics)]<- (-1)
-mpra.pics$IBD_pics[is.na(mpra.pics$IBD_pics)]<- (-1)
-mpra.pics$T1D_pics[is.na(mpra.pics$T1D_pics)]<- (-1)
-mpra.pics$Crohns_pics[is.na(mpra.pics$Crohns_pics)]<- (-1)
-mpra.pics$Psoriasis_pics[is.na(mpra.pics$Psoriasis_pics)]<- (-1)
-colnames(mpra.pics)
-mpra.pics$win_pics <- colnames(mpra.pics)[apply(mpra.pics[,1:7],1,which.max)] # Make a column that is called win_pics which will give me the name of the pics column with the best 
-
-mpra.pics$max_pics <- NA # This creates a column full of NAs for the loop to fill
-
-for(i in 1:nrow(mpra.pics)){
-  if(mpra.pics[i,]$win_pics=="MS_pics" & mpra.pics[i,]$MS_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$MS_pics
-  } # if win_pics says MS_pics and MS_pval>=8 then the max_pics is MS_pics
-  if(mpra.pics[i,]$win_pics=="RA_pics" & mpra.pics[i,]$RA_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$RA_pics
-  } # if win_pics says RA_pics then the max_pics is RA_pics
-  if(mpra.pics[i,]$win_pics=="UC_pics" & mpra.pics[i,]$UC_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$UC_pics
-  } # if win_pics says UC_pics then the max_pics is UC_pics
-  if(mpra.pics[i,]$win_pics=="IBD_pics" & mpra.pics[i,]$IBD_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$IBD_pics
-  } # if win_pics says IBD_pics then the max_pics is IBD_pics
-  if(mpra.pics[i,]$win_pics=="Crohns_pics" & mpra.pics[i,]$Crohns_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Crohns_pics
-  } # if win_pics says Crohns_pics then the max_pics is Crohns_pics
-  if(mpra.pics[i,]$win_pics=="Psoriasis_pics" & mpra.pics[i,]$Psoriasis_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Psoriasis_pics
-  } # if win_pics says Psoriasis_pics then the max_pics is Psoriasis_pics
-   if(mpra.pics[i,]$win_pics=="T1D_pics" & mpra.pics[i,]$T1D_pval>=8){
-    mpra.pics[i,]$max_pics<-mpra.pics[i,]$T1D_pics
-  } # if win_pics says T1D_pics then the max_pics is T1D_pics
+  for(i in 1:nrow(mpra.pics)){ #Run through each MPRA variant
   
-  # if(mpra.pics[i,]$win_pics=="MS_pics" & mpra.pics[i,]$MS_pval<=8){
-  #  mpra.pics[i,]$win_pics<-NA
-  #} # if win_pics says MS_pics and MS_pval<=8 then the win_pics is back to NA
-  # if(mpra.pics[i,]$win_pics=="RA_pics" & mpra.pics[i,]$RA_pval<=8){
-  #  mpra.pics[i,]$win_pics<-NA
-  #} # if win_pics says RA_pics and RA_pval<=8 then the win_pics is back to NA
+  top_pval<-max(mpra.pics[i,grepl("_pval",names(mpra.pics))], na.rm=T) #Find the top GWAS p-value
+  top_disease<-str_split_fixed(names(mpra.pics)[which(mpra.pics[i,]==top_pval)][1], "\\_", 2)[1] #Find the disease corresponding to the top GWAS p-value
   
+  #Write out GWAS and PICS data for top GWAS p-value
+  mpra.pics[i,]$top_pval<-top_pval
+  mpra.pics[i,]$top_disease<-top_disease
+  mpra.pics[i,]$top_PP_running<-mpra.pics[i,paste0(top_disease, "_PP_running")]
+  mpra.pics[i,]$top_pics<-mpra.pics[i,paste0(top_disease, "_pics")]
 }
+  mpra.pics$top_pics<-as.numeric(mpra.pics$top_pics)
+  mpra.pics$top_PP_running<-as.numeric(mpra.pics$top_PP_running)
 
-# Make the MPRA pics columns which are NA return to NA
-mpra.pics$MS_pics[mpra.pics$MS_pics<0]<- NA
-mpra.pics$RA_pics[mpra.pics$RA_pics<0]<- NA
-mpra.pics$UC_pics[mpra.pics$UC_pics<0]<- NA
-mpra.pics$IBD_pics[mpra.pics$IBD_pics<0]<- NA
-mpra.pics$T1D_pics[mpra.pics$T1D_pics<0]<- NA
-mpra.pics$Crohns_pics[mpra.pics$Crohns_pics<0]<- NA
-mpra.pics$Psoriasis_pics[mpra.pics$Psoriasis_pics<0]<- NA
-
-mpra.pics$top_disease <- str_extract(mpra.pics$win_pics, "[^_]+")
 ```
 
 Putting the max_pics and win_pics back into mpra
 ```{r, eval=FALSE}
-mpra$top_disease <- mpra.pics$top_disease 
-mpra$top_pics <- mpra.pics$max_pics
+mpra$top_disease <- mpra.pics$top_disease
+mpra$top_pics <- mpra.pics$top_pics
 ```
+
+     
+
+
 
 ```{r}
 nrow(mpra)
@@ -743,5 +711,60 @@ xtra <- mpra$SNP[duplicated(mpra$SNP)]
 extra_snps <- nrow(subset(mpra, is.na(SNP)==TRUE))
 ```
 
+Old way to determine top pics and top disease
+```{r, eval=FALSE}
+#For each MPRA variant, find the pics for all the diseases and make max_pics the maximum of all of those values
+mpra.pics <- subset(mpra, select=c(MS_pics,RA_pics,UC_pics,T1D_pics,IBD_pics,Crohns_pics,Psoriasis_pics,RA_pval, MS_pval, UC_pval, T1D_pval, IBD_pval,Crohns_pval,Psoriasis_pval))
 
+mpra.pics <- subset(mpra.pics, RA_pval>=0 | MS_pval>=0 | UC_pval>=0 | T1D_pval>=0 | IBD_pval>=0 | Crohns_pval>=0 | Psoriasis_pval>=0)
 
+# Make the NAs for pics -1
+mpra.pics$MS_pics[is.na(mpra.pics$MS_pics)]<- (-1)
+mpra.pics$RA_pics[is.na(mpra.pics$RA_pics)]<- (-1)
+mpra.pics$UC_pics[is.na(mpra.pics$UC_pics)]<- (-1)
+mpra.pics$IBD_pics[is.na(mpra.pics$IBD_pics)]<- (-1)
+mpra.pics$T1D_pics[is.na(mpra.pics$T1D_pics)]<- (-1)
+mpra.pics$Crohns_pics[is.na(mpra.pics$Crohns_pics)]<- (-1)
+mpra.pics$Psoriasis_pics[is.na(mpra.pics$Psoriasis_pics)]<- (-1)
+colnames(mpra.pics)
+mpra.pics$win_pics <- colnames(mpra.pics)[apply(mpra.pics[,1:7],1,which.max)] # Make a column that is called win_pics which will give me the name of the pics column with the best 
+
+mpra.pics$max_pics <- NA # This creates a column full of NAs for the loop to fill
+
+for(i in 1:nrow(mpra.pics)){
+  if(mpra.pics[i,]$win_pics=="MS_pics" & mpra.pics[i,]$MS_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$MS_pics
+  } # if win_pics says MS_pics and MS_pval>=8 then the max_pics is MS_pics
+  if(mpra.pics[i,]$win_pics=="RA_pics" & mpra.pics[i,]$RA_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$RA_pics
+  } # if win_pics says RA_pics then the max_pics is RA_pics
+  if(mpra.pics[i,]$win_pics=="UC_pics" & mpra.pics[i,]$UC_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$UC_pics
+  } # if win_pics says UC_pics then the max_pics is UC_pics
+  if(mpra.pics[i,]$win_pics=="IBD_pics" & mpra.pics[i,]$IBD_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$IBD_pics
+  } # if win_pics says IBD_pics then the max_pics is IBD_pics
+  if(mpra.pics[i,]$win_pics=="Crohns_pics" & mpra.pics[i,]$Crohns_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Crohns_pics
+  } # if win_pics says Crohns_pics then the max_pics is Crohns_pics
+  if(mpra.pics[i,]$win_pics=="Psoriasis_pics" & mpra.pics[i,]$Psoriasis_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$Psoriasis_pics
+  } # if win_pics says Psoriasis_pics then the max_pics is Psoriasis_pics
+   if(mpra.pics[i,]$win_pics=="T1D_pics" & mpra.pics[i,]$T1D_pval>=8){
+    mpra.pics[i,]$max_pics<-mpra.pics[i,]$T1D_pics
+  } # if win_pics says T1D_pics then the max_pics is T1D_pics
+  
+   
+}
+
+# Make the MPRA pics columns which are NA return to NA
+mpra.pics$MS_pics[mpra.pics$MS_pics<0]<- NA
+mpra.pics$RA_pics[mpra.pics$RA_pics<0]<- NA
+mpra.pics$UC_pics[mpra.pics$UC_pics<0]<- NA
+mpra.pics$IBD_pics[mpra.pics$IBD_pics<0]<- NA
+mpra.pics$T1D_pics[mpra.pics$T1D_pics<0]<- NA
+mpra.pics$Crohns_pics[mpra.pics$Crohns_pics<0]<- NA
+mpra.pics$Psoriasis_pics[mpra.pics$Psoriasis_pics<0]<- NA
+
+mpra.pics$top_disease <- str_extract(mpra.pics$win_pics, "[^_]+")
+```

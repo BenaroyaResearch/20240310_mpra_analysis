@@ -49,7 +49,7 @@ Supplementary table list:
  - derived from 20240310_tcell_glm_hg19_histone_cage_dhs_data.txt
  - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
  - equivalent of mouri supp. table 5
-13. MPRA functional annotations
+13. T cell MPRA functional annotations
  - derived from 20240310_tcell_glm_mpra_merge_hg38_hg19.txt
  - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm/data
  - large subset needed
@@ -60,6 +60,9 @@ Supplementary table list:
  - with extra columns needed from the pics plot (credible sets)
  - equivalent of mouri supp. table 10
 14. UKBB by MPRA
+15. Jurkat MPRA functional annotations
+ - derived from 20240310_unstim_jurkat_glm_mpra_merge_hg38_hg19.txt
+ - located at /nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data
 
 ```{r}
 library(openxlsx)
@@ -392,6 +395,20 @@ supp_table_15 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downs
 
 ```
 
+## Table 16
+```{r}
+supp_table_16 <- read.delim("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38_hg19.txt",header=T, stringsAsFactors = F,sep="\t")
+supp_table_16 <- subset(supp_table_16, select=c(SNP19,SNP38, rsid, mpra_sig,dhs_hTH1,	dhs_hTH17,	dhs_hTH2,	dhs_CD4,	dhs_CD4pos_N,	dhs_hTR,	dhs_Jurkat,	dhs_CD8,	dhs_Tcell_merged,	dhs_all,delta_svm_nCD4,	asc,	atac_qtl_beta,atac_qtl_pval,	eqtl_beta, eqtl_pval,eqtl_gene,	tf_motifbreakr, tss,ananastra_tf,motifbreakr_tf_2024))
+supp_table_16
+# Add UKBB column
+mpra_biobank_merge_all_traits <- read.table(paste0("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/UK_biobank_finemapping_enrichment/data/","mpra_biobank_merge_all_traits",".txt"),header=T, stringsAsFactors = F,sep="\t")
+mpra_biobank_merge_all_traits
+mpra_biobank_subset <- subset(mpra_biobank_merge_all_traits, select=c(SNP19,trait,pip))
+names(mpra_biobank_subset) <- c("SNP19","ukbb_top_trait","ukbb_top_pip")
+supp_table_16 <- merge(supp_table_16,mpra_biobank_subset,by="SNP19")
+supp_table_16
+```
+
 
 Create the excel workbook for all of the tables
 ```{r}
@@ -434,15 +451,20 @@ writeData(wb, sheet = "11. chromHMM enrich", supp_table_11,keepNA =TRUE)
 addWorksheet(wb, sheetName = "12. Histone CAGE DHS Enrichment")
 writeData(wb, sheet = "12. Histone CAGE DHS Enrichment", supp_table_12,keepNA =TRUE)
 # Table 13
-addWorksheet(wb, sheetName = "13. MPRA Functional Annotations")
-writeData(wb, sheet = "13. MPRA Functional Annotations", supp_table_13,keepNA =TRUE)
+addWorksheet(wb, sheetName = "13. T-cell MPRA Func. Annot.")
+writeData(wb, sheet = "13. T-cell MPRA Func. Annot.", supp_table_13,keepNA =TRUE)
 # Table 14
 addWorksheet(wb, sheetName = "14. PICS by MPRA")
 writeData(wb, sheet = "14. PICS by MPRA", supp_table_14,keepNA =TRUE)
 # Table 15
 addWorksheet(wb, sheetName = "15. UKBB by MPRA")
 writeData(wb, sheet = "15. UKBB by MPRA", supp_table_15,keepNA =TRUE)
+# Table 16
+addWorksheet(wb, sheetName = "16. Jurkat MPRA Func. Annot.")
+writeData(wb, sheet = "16. Jurkat MPRA Func. Annot.", supp_table_16,keepNA =TRUE)
 
-saveWorkbook(wb, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/ho_et_al_big_table6.xlsx")
+
+
+saveWorkbook(wb, "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/ho_et_al_big_table7.xlsx")
 ```
 
