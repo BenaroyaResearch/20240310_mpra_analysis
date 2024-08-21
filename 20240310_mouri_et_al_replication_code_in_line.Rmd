@@ -13,7 +13,7 @@ library(IRanges)
 #library(SummarizedExperiment)
 library(ggplot2)
 library(pheatmap)
-library(ChIPseeker)
+#library(ChIPseeker)
 library(clusterProfiler)
 library(reshape2)
 library(filelock)
@@ -78,10 +78,12 @@ venn_diagram_plot <- ggvenn(B, set_name_size = 3, fill_color = c(color1,color2))
 venn_diagram_plot 
 
 # creating the plot name from the plots_id
-  plots_name <- paste0(plots_id,"emvars_ven_diagram",".pdf")
+  plots_name <- paste0(plots_id,"emvars_ven_diagram_",mpra1_name,"_",mpra2_name,".pdf")
 # Saving the plot in the plots directory 
   ggsave(plots_name,plot = venn_diagram_plot, path = plots.dir)
-  
+
+
+    
 # Hypergeometric statistical test for overlap 
   # https://zhouhufeng.wordpress.com/2014/04/21/statistically-test-of-venn-diagram/
   # Hypergeometric test for how many variants were expected vs. observed to overlap between jurkat and primary t cell MPRA emVars
@@ -95,6 +97,10 @@ venn_diagram_plot
   n <- nrow(hyper.test.dat) - nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew"))
   k <- nrow(subset(hyper.test.dat, jurkat_sig=="Enhancer_Skew"))
   phyper(q,m,n,k, lower.tail = FALSE, log.p = FALSE)
+  
+# Calculate the expected overlap 
+Expected_variants <- (nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew"))/nrow(hyper.test.dat)) * (nrow(subset(hyper.test.dat, jurkat_sig=="Enhancer_Skew"))/nrow(hyper.test.dat)) * nrow(hyper.test.dat)
+print(paste0("The observed number of overlapped variants is ", nrow(subset(hyper.test.dat, tcell_sig=="Enhancer_Skew" & jurkat_sig=="Enhancer_Skew")), " and the expected number of variants is ", Expected_variants))
 ```
 
 Allelic Bias scatter plot
@@ -149,6 +155,8 @@ data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
 plots_id <- "20240310_tcell_glm_hg38" 
 cell_type <- "tcell"
+# What is the stimulation status of the cells? We going to eliminate stimulated (S) or unstimulated (U) cells.
+eliminate_stim_status <- "U" # Stimulated so eliminate unstimulated cells with U
 
 #mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg38.txt"
 #mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
@@ -161,6 +169,10 @@ cell_type <- "tcell"
     # plots_id is the prefix to the plot. It should end with an underscore to look nice
 #plots_id <- "20240310_unstim_jurkat_glm_hg38" 
 #cell_type <- "jurkat"
+# What is the stimulation status of the cells? We going to eliminate stimulated (S) or unstimulated (U) cells.
+# eliminate_stim_status <- "S" <- # Unstimulated so eliminate stimulated cells with S
+
+
 ```
 
 # Variant category table
@@ -275,7 +287,6 @@ ggsave(plots_name3,plot = MPRA_allelic_skew_density_plot, path = plots.dir, widt
 
 # DHS enrichment plot
 ```{r dhs enrichment}
-# HG38
 dhs.pos<- read.delim(gzfile("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/data/hg38_dhs/DHS_Index_and_Vocabulary_hg38_WM20190703.txt.gz"), header=T, stringsAsFactors = F)
 
 # 3. sample.dat
@@ -427,6 +438,10 @@ data.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/2
 # plots_id is the prefix to the plot. It should end with an underscore to look nice
 plots_id <- "20240310_tcell_glm_hg19" 
 cell_type <- "tcell"
+# What is the stimulation status of the cells? We going to eliminate stimulated (S) or unstimulated (U) cells.
+eliminate_stim_status <- "U" # Stimulated so eliminate unstimulated cells with U
+
+
 
 #mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm/data/20240310_unstim_jurkat_glm_mpra_merge_hg19.txt"
 #mpra_merge <- read.delim(paste0(mpra.dir), header=T, stringsAsFactors = F, sep="\t")
@@ -439,6 +454,8 @@ cell_type <- "tcell"
     # plots_id is the prefix to the plot. It should end with an underscore to look nice
 #plots_id <- "20240310_unstim_jurkat_glm_hg19" 
 #cell_type <- "jurkat"
+# What is the stimulation status of the cells? We going to eliminate stimulated (S) or unstimulated (U) cells.
+eliminate_stim_status <- "S" <- # Unstimulated so eliminate stimulated cells with S
 
 lead.snp.dat.all <- data.frame(table(mpra_merge$lead_snp))
 names(lead.snp.dat.all) <- c("lead_snp", "number_of_variants")
@@ -730,7 +747,7 @@ mpra <- mpra_merge
 # This is 
 dat.skew <-data.frame(read_excel("/nfs/jray/screens/Mouri_et_al_MPRA/asc/41588_2019_505_MOESM3_ESM.xlsx", sheet=10), stringsAsFactors = F)
 
-dat.skew<-dat.skew[!grepl("\\-U", dat.skew$cell_type),] # if analyzing stimulated cells remove unstimulated cell types
+dat.skew<-dat.skew[!grepl(paste0("\\-",eliminate_stim_status), dat.skew$cell_type),] # if analyzing stimulated cells remove unstimulated cell types
 
 # Parse ATAC allelic skew file
 dat.skew$chr<-str_split_fixed(dat.skew$het_id, "\\_", 5)[,2]

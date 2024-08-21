@@ -4,8 +4,9 @@ output: html_document
 date: "2023-03-11"
 ---
 
-The goal of this mark down is to create a better mpra merge file. This file will have both hg19 and hg38 SNPs.
+The goal of this mark down is to go from an MPRA table in hg19 to an MPRA table in hg38 
 
+Load packages
 ```{r}
 library(ggvenn)
 library(stringr)
@@ -13,24 +14,18 @@ library(stringr)
 
 Insert MPRA directory here
 ```{r}
-mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
-mpra.name <- "20240310_tcell_glm_mpra_merge"
+#mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/tcell/glm"
+#mpra.name <- "20240310_tcell_glm_mpra_merge"
 # mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/unstim_jurkat/glm"
 # mpra.name <- "20240310_unstim_jurkat_glm_mpra_merge"
+mpra.dir <- "/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/20240310_mpra_analysis/GM12878/glm"
+mpra.name <- "20240310_GM12878_glm_mpra_merge"
 mpra.path <- paste0(mpra.dir,"/data/",mpra.name,"_hg19.txt")
-```
-
-Create a bed file for the lift over
-```{r}
-# Load MPRA data (change data set by pasting different directory)
-mpra <- read.table(mpra.path, sep="\t", header=T)
-# How many rows in the MPRA data?
-nrow(mpra)
 ```
 
 ## 1. Put hg38 names into table
 
-This is the hg19 and hg38 data. We need to put this data into MPRA merge. Make the snpid_hg38 by combining different parts of the exisitng columns
+This is the liftover data. We need to put this data into MPRA merge. Make a table with a SNP19 and SNP38. 
 ```{r}
 hg38_liftover <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/mpra_snps.hg38_liftover.txt", sep="", header=T)
 # Get rid of the word "chr" in the chromosome column, so only the number remains
@@ -76,14 +71,12 @@ new_mpra$snp_start19 <- new_mpra$snp_start
 new_mpra$snp_end19 <- new_mpra$snp_end
 new_mpra$ID19 <- new_mpra$ID
 
-
 new_mpra <-  subset(new_mpra, select = -c(snp_end,snp_start,lead_snp,ld_snp,ID,chr,SNP,pos,comb))
 
 mpra <- new_mpra
 ```
 
-This is John's conversion data which has SNP 38 lead_snp, ld_snp
-First we need to make sure that this and the previous 
+This is John's conversion data which has hg38 lead_snp and ld_snp
 ```{r}
 hg38_conversion <- read.table("/nfs/jray/screens/ALL_MPRAs/Ho_et_al_analysis/Downstream_Analysis/hg_19_to_38/data/231011_Mouri_hg19_to_hg38_conversion.txt", sep="\t", header=T)
 # names(hg38_conversion)
@@ -162,8 +155,9 @@ mpra <- subset(mpra, select = -c(SNP38,lead_snp38,ld_snp38,pos38,chr38,ID38,ref_
 
 names(mpra)
 # May need to add or subtract 2 depending on the amount of columns in the table
- mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
-#mpra <- mpra[,c(76,80,79,81,82,83:86,77,78,1:75)]
+mpra <- mpra[,c(74,78,77,79,80,81:84,75,76,1:73)]
+# For GM12878
+#mpra <- mpra[,c(71,75,74,76,77,78:81,72,73,1:70)]
 names(mpra)
 ```
 
